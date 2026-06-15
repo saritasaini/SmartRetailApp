@@ -10,13 +10,13 @@ export default function ProductManagement() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewingProduct, setViewingProduct] = useState(null);
@@ -54,12 +54,12 @@ export default function ProductManagement() {
       ]);
 
       if (productsRes.data) setProducts(productsRes.data);
-      
+
       let allCategories = [];
       if (categoriesRes.data) {
         allCategories = [...categoriesRes.data];
       }
-      
+
       // Also include categories that are already assigned to existing products, even if they belong to another company (from the old bug)
       if (productsRes.data) {
         productsRes.data.forEach(p => {
@@ -68,10 +68,10 @@ export default function ProductManagement() {
           }
         });
       }
-      
+
       allCategories.sort((a, b) => a.name.localeCompare(b.name));
       setCategories(allCategories);
-      
+
       if (allCategories.length > 0) {
         setFormData(prev => ({ ...prev, category_id: allCategories[0].id }));
       }
@@ -168,7 +168,7 @@ export default function ProductManagement() {
         payload.company_id = useAuthStore.getState().user.id;
         await supabase.from('products').insert([payload]);
       }
-      
+
       setIsModalOpen(false);
       fetchData();
     } catch (error) {
@@ -197,7 +197,7 @@ export default function ProductManagement() {
         .split('\n')
         .map(n => n.trim())
         .filter(n => n !== '');
-        
+
       const uniqueNames = [...new Set(names)];
 
       // Filter out categories that already exist in the user's current list (case-insensitive)
@@ -220,7 +220,7 @@ export default function ProductManagement() {
 
       if (error) {
         if (error.code === '23505') {
-           throw new Error(`Category already exists globally. Please ask the admin to remove the unique name constraint, or use a different name.`);
+          throw new Error(`Category already exists globally. Please ask the admin to remove the unique name constraint, or use a different name.`);
         }
         throw error;
       }
@@ -264,10 +264,10 @@ export default function ProductManagement() {
 
   // Filter Logic
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (p.categories?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.categories?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || p.category_id === selectedCategory;
-    
+
     let matchesStatus = true;
     if (statusFilter === 'Active') matchesStatus = p.is_active;
     else if (statusFilter === 'Deactive') matchesStatus = !p.is_active;
@@ -296,25 +296,25 @@ export default function ProductManagement() {
 
       {/* Mobile Filter Tabs */}
       <div className="md:hidden flex overflow-x-auto gap-2 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <button 
+        <button
           onClick={() => setStatusFilter('All')}
           className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${statusFilter === 'All' ? 'bg-brand-caramel text-white border-brand-caramel shadow-md' : 'bg-bg-tertiary text-text-secondary border-border-light'}`}
         >
           Total Products ({totalProducts})
         </button>
-        <button 
+        <button
           onClick={() => setStatusFilter('Active')}
           className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${statusFilter === 'Active' ? 'bg-brand-pistachio text-white border-brand-pistachio shadow-md' : 'bg-bg-tertiary text-text-secondary border-border-light'}`}
         >
           Active ({activeProducts})
         </button>
-        <button 
+        <button
           onClick={() => setStatusFilter('Deactive')}
           className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${statusFilter === 'Deactive' ? 'bg-gray-500 text-white border-gray-500 shadow-md' : 'bg-bg-tertiary text-text-secondary border-border-light'}`}
         >
           Deactive ({deactiveProducts})
         </button>
-        <button 
+        <button
           onClick={() => setStatusFilter('LowStock')}
           className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${statusFilter === 'LowStock' ? 'bg-brand-honey text-white border-brand-honey shadow-md' : 'bg-bg-tertiary text-text-secondary border-border-light'}`}
         >
@@ -324,7 +324,7 @@ export default function ProductManagement() {
 
       {/* Mini Dashboard Stats (Desktop only) */}
       <div className="hidden md:grid md:grid-cols-4 gap-4">
-        <GlassCard 
+        <GlassCard
           onClick={() => setStatusFilter('All')}
           className={`relative overflow-hidden flex items-center gap-4 py-4 px-5 cursor-pointer transition-all duration-300 ${statusFilter === 'All' ? 'shadow-lg scale-[1.02] bg-brand-caramel/5 border border-brand-caramel/20' : 'hover:bg-bg-primary/50 hover:scale-[1.01] border border-transparent'}`}
         >
@@ -337,8 +337,8 @@ export default function ProductManagement() {
             <h3 className="text-xl font-bold text-text-primary">{totalProducts}</h3>
           </div>
         </GlassCard>
-        
-        <GlassCard 
+
+        <GlassCard
           onClick={() => setStatusFilter('Active')}
           className={`relative overflow-hidden flex items-center gap-4 py-4 px-5 cursor-pointer transition-all duration-300 ${statusFilter === 'Active' ? 'shadow-lg scale-[1.02] bg-brand-pistachio/5 border border-brand-pistachio/20' : 'hover:bg-bg-primary/50 hover:scale-[1.01] border border-transparent'}`}
         >
@@ -352,7 +352,7 @@ export default function ProductManagement() {
           </div>
         </GlassCard>
 
-        <GlassCard 
+        <GlassCard
           onClick={() => setStatusFilter('Deactive')}
           className={`relative overflow-hidden flex items-center gap-4 py-4 px-5 cursor-pointer transition-all duration-300 ${statusFilter === 'Deactive' ? 'shadow-lg scale-[1.02] bg-gray-500/5 border border-gray-500/20' : 'hover:bg-bg-primary/50 hover:scale-[1.01] border border-transparent'}`}
         >
@@ -366,7 +366,7 @@ export default function ProductManagement() {
           </div>
         </GlassCard>
 
-        <GlassCard 
+        <GlassCard
           onClick={() => setStatusFilter('LowStock')}
           className={`relative overflow-hidden flex items-center gap-4 py-4 px-5 cursor-pointer transition-all duration-300 ${statusFilter === 'LowStock' ? 'shadow-lg scale-[1.02] bg-brand-honey/5 border border-brand-honey/20' : 'hover:bg-bg-primary/50 hover:scale-[1.01] border border-transparent'}`}
         >
@@ -385,9 +385,9 @@ export default function ProductManagement() {
       <div className="flex flex-col md:flex-row gap-3">
         <GlassCard className="flex items-center gap-2 flex-1 py-2 px-4">
           <Search className="text-text-secondary" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search products by name or category..." 
+          <input
+            type="text"
+            placeholder="Search products by name or category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="bg-transparent border-none text-sm text-text-primary focus:outline-none w-full"
@@ -395,7 +395,7 @@ export default function ProductManagement() {
         </GlassCard>
 
         <div className="relative md:w-64 z-40">
-          <GlassCard 
+          <GlassCard
             className="flex items-center justify-between py-2 px-4 cursor-pointer h-full"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
@@ -416,14 +416,14 @@ export default function ProductManagement() {
                 exit={{ opacity: 0, y: -10 }}
                 className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-bg-secondary border border-border-light rounded-lg shadow-lg custom-scrollbar z-50 flex flex-col"
               >
-                <div 
+                <div
                   className={`px-4 py-2.5 text-sm cursor-pointer transition-all duration-300 hover:pl-6 hover:bg-bg-primary ${selectedCategory === 'All' ? 'text-brand-caramel font-semibold bg-bg-primary/50' : 'text-text-primary'}`}
                   onClick={() => { setSelectedCategory('All'); setIsDropdownOpen(false); }}
                 >
                   All Categories
                 </div>
                 {categories.map(c => (
-                  <div 
+                  <div
                     key={c.id}
                     className={`px-4 py-2.5 text-sm cursor-pointer transition-all duration-300 hover:pl-6 hover:bg-bg-primary ${selectedCategory === c.id ? 'text-brand-caramel font-semibold bg-bg-primary/50' : 'text-text-primary'}`}
                     onClick={() => { setSelectedCategory(c.id); setIsDropdownOpen(false); }}
@@ -431,7 +431,7 @@ export default function ProductManagement() {
                     {c.name}
                   </div>
                 ))}
-                <div 
+                <div
                   className="sticky bottom-0 z-10 px-4 py-3 text-sm cursor-pointer font-bold bg-red-500 text-white hover:bg-red-600 transition-all duration-300 flex items-center justify-center gap-2 mt-auto shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
                   onClick={() => { setIsDropdownOpen(false); handleAddCategoryClick(); }}
                 >
@@ -445,10 +445,10 @@ export default function ProductManagement() {
 
       {/* Products Table (Compact Row Type) */}
       <GlassCard className="overflow-hidden p-0">
-        <div className="overflow-auto max-h-[70vh] custom-scrollbar">
-          <table className="w-full text-left border-collapse relative">
-            <thead className="sticky top-0 z-20 bg-bg-tertiary/95 backdrop-blur-sm shadow-sm">
-              <tr className="border-b border-border-light">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-border-light bg-bg-tertiary/30">
                 <th className="py-3 px-2 md:px-4 text-[10px] md:text-xs font-semibold text-text-secondary uppercase tracking-wider w-8 md:w-12 text-center md:text-left">S.No.</th>
                 <th className="py-3 px-2 md:px-4 text-[10px] md:text-xs font-semibold text-text-secondary uppercase tracking-wider w-12 md:w-16 text-center md:text-left">Image</th>
                 <th className="py-3 px-2 md:px-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Product Info</th>
@@ -497,36 +497,34 @@ export default function ProductManagement() {
                       <p className="text-[10px] text-text-secondary uppercase">per {product.unit}</p>
                     </td>
                     <td className="py-2 px-4">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
-                        product.stock_quantity >= 100 ? 'bg-brand-pistachio/10 text-brand-pistachio' : 
-                        product.stock_quantity >= 50 ? 'bg-brand-honey/10 text-brand-honey' : 
-                        'bg-brand-caramel/10 text-brand-caramel'
-                      }`}>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${product.stock_quantity >= 100 ? 'bg-brand-pistachio/10 text-brand-pistachio' :
+                          product.stock_quantity >= 50 ? 'bg-brand-honey/10 text-brand-honey' :
+                            'bg-brand-caramel/10 text-brand-caramel'
+                        }`}>
                         {product.stock_quantity}
                       </span>
                     </td>
                     <td className="py-2 px-4">
-                      <button 
+                      <button
                         onClick={(e) => { e.stopPropagation(); toggleStatus(product.id, product.is_active); }}
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-colors ${
-                          product.is_active 
-                            ? 'bg-brand-pistachio/10 text-brand-pistachio hover:bg-brand-pistachio/20' 
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-colors ${product.is_active
+                            ? 'bg-brand-pistachio/10 text-brand-pistachio hover:bg-brand-pistachio/20'
                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}
+                          }`}
                       >
                         {product.is_active ? 'ACTIVE' : 'DEACTIVE'}
                       </button>
                     </td>
                     <td className="py-2 px-4">
                       <div className="flex gap-1 justify-end">
-                        <button 
+                        <button
                           onClick={(e) => { e.stopPropagation(); handleOpenModal(product); }}
                           className="p-1.5 text-text-secondary hover:text-brand-caramel hover:bg-brand-caramel/10 rounded-md transition-colors"
                           title="Edit Product"
                         >
                           <Edit2 size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
                           className="p-1.5 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
                           title="Delete Product"
@@ -559,13 +557,13 @@ export default function ProductManagement() {
               className="w-full max-w-2xl"
             >
               <GlassCard className="relative overflow-y-auto max-h-[90vh] p-6">
-                <button 
+                <button
                   onClick={() => setIsModalOpen(false)}
                   className="absolute top-4 right-4 text-text-secondary hover:text-text-primary"
                 >
                   <X size={20} />
                 </button>
-                
+
                 <h2 className="text-xl font-bold text-text-primary mb-5">
                   {editingProduct ? 'Edit Product' : 'Add New Product'}
                 </h2>
@@ -597,8 +595,8 @@ export default function ProductManagement() {
                         <p className="text-xs text-text-muted mt-1">PNG, JPG up to 5MB</p>
                       </div>
                     )}
-                    <input 
-                      type="file" 
+                    <input
+                      type="file"
                       accept="image/*"
                       onChange={handleImageChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -610,23 +608,23 @@ export default function ProductManagement() {
                       <label className="block text-xs font-semibold text-text-secondary mb-1">Product Name</label>
                       <input
                         type="text" required
-                        value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                        value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
                         className="w-full bg-bg-primary border border-border-light rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none"
                       />
                     </div>
                     <div className="md:col-span-1">
                       <label className="block text-xs font-semibold text-text-secondary mb-1">Category</label>
                       <div className="flex gap-2">
-                        <select 
+                        <select
                           className="w-full bg-bg-tertiary border border-border-light text-text-primary text-sm rounded-lg focus:ring-brand-caramel focus:border-brand-caramel p-2.5 outline-none transition-all"
-                          value={formData.category_id} onChange={e => setFormData({...formData, category_id: e.target.value})}
+                          value={formData.category_id} onChange={e => setFormData({ ...formData, category_id: e.target.value })}
                           required
                         >
                           <option value="" disabled>Select a category</option>
                           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={handleAddCategoryClick}
                           className="bg-brand-caramel/10 text-brand-caramel px-3 rounded-lg hover:bg-brand-caramel/20 transition-colors flex items-center justify-center whitespace-nowrap"
                           title="Add New Category"
@@ -639,7 +637,7 @@ export default function ProductManagement() {
                       <label className="block text-xs font-semibold text-text-secondary mb-1">Price (₹)</label>
                       <input
                         type="number" step="0.01" required min="0"
-                        value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})}
+                        value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })}
                         className="w-full bg-bg-primary border border-border-light rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none"
                       />
                     </div>
@@ -647,7 +645,7 @@ export default function ProductManagement() {
                       <label className="block text-xs font-semibold text-text-secondary mb-1">Unit (piece, box)</label>
                       <input
                         type="text" required
-                        value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})}
+                        value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })}
                         className="w-full bg-bg-primary border border-border-light rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none"
                       />
                     </div>
@@ -655,7 +653,7 @@ export default function ProductManagement() {
                       <label className="block text-xs font-semibold text-text-secondary mb-1">Stock Quantity</label>
                       <input
                         type="number" required min="0"
-                        value={formData.stock_quantity} onChange={e => setFormData({...formData, stock_quantity: e.target.value})}
+                        value={formData.stock_quantity} onChange={e => setFormData({ ...formData, stock_quantity: e.target.value })}
                         className="w-full bg-bg-primary border border-border-light rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none"
                       />
                     </div>
@@ -665,17 +663,17 @@ export default function ProductManagement() {
                     <label className="block text-xs font-semibold text-text-secondary mb-1">Description (Optional)</label>
                     <textarea
                       rows="2"
-                      value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
+                      value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}
                       className="w-full bg-bg-primary border border-border-light rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none resize-none"
                     ></textarea>
                   </div>
 
                   <div className="flex items-center gap-2 mb-2">
-                    <input 
-                      type="checkbox" 
-                      id="is_active" 
+                    <input
+                      type="checkbox"
+                      id="is_active"
                       checked={formData.is_active}
-                      onChange={e => setFormData({...formData, is_active: e.target.checked})}
+                      onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
                       className="w-3.5 h-3.5 rounded border-border-light bg-bg-primary focus:ring-brand-caramel text-brand-caramel"
                     />
                     <label htmlFor="is_active" className="text-xs font-medium text-text-secondary">Active</label>
@@ -709,21 +707,21 @@ export default function ProductManagement() {
               onClick={e => e.stopPropagation()}
             >
               <GlassCard className="relative overflow-hidden p-0 shadow-2xl border-border-light/30">
-                <button 
+                <button
                   onClick={() => setViewingProduct(null)}
                   className="absolute top-4 right-4 z-20 bg-bg-primary/50 hover:bg-bg-primary p-2 rounded-full text-text-secondary hover:text-text-primary transition-colors backdrop-blur-md border border-border-light/50"
                 >
                   <X size={18} />
                 </button>
-                
+
                 <div className="flex flex-col md:flex-row md:h-[320px] select-none">
                   {/* Left Column: Image */}
                   <div className="w-full md:w-2/5 h-56 md:h-full bg-bg-tertiary relative flex items-center justify-center shrink-0 border-r border-border-light/30">
                     {viewingProduct.image_url ? (
-                      <img 
-                        src={viewingProduct.image_url} 
-                        alt={viewingProduct.name} 
-                        className="absolute inset-0 w-full h-full object-cover" 
+                      <img
+                        src={viewingProduct.image_url}
+                        alt={viewingProduct.name}
+                        className="absolute inset-0 w-full h-full object-cover"
                       />
                     ) : (
                       <ImageIcon className="text-text-muted opacity-30" size={48} />
@@ -739,7 +737,7 @@ export default function ProductManagement() {
                   <div className="flex-1 p-5 flex flex-col justify-between bg-gradient-to-br from-bg-secondary to-bg-primary">
                     <div>
                       <h2 className="text-xl font-bold text-text-primary mb-1 leading-tight line-clamp-2 select-text">{viewingProduct.name}</h2>
-                      
+
                       <div className="flex items-end gap-2 mt-2 mb-3 pb-3 border-b border-border-light/30">
                         <p className="text-2xl font-bold text-brand-pistachio leading-none">
                           ₹{viewingProduct.price}
@@ -759,11 +757,10 @@ export default function ProductManagement() {
                         <div className="flex flex-col">
                           <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Stock Level</span>
                           <div className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full ${
-                              viewingProduct.stock_quantity >= 100 ? 'bg-brand-pistachio' : 
-                              viewingProduct.stock_quantity >= 50 ? 'bg-brand-honey' : 
-                              'bg-brand-caramel'
-                            }`}></span>
+                            <span className={`w-2 h-2 rounded-full ${viewingProduct.stock_quantity >= 100 ? 'bg-brand-pistachio' :
+                                viewingProduct.stock_quantity >= 50 ? 'bg-brand-honey' :
+                                  'bg-brand-caramel'
+                              }`}></span>
                             <span className="text-sm font-bold text-text-primary">
                               {viewingProduct.stock_quantity}
                             </span>
@@ -788,7 +785,7 @@ export default function ProductManagement() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="mt-2 pt-3 flex justify-between items-center border-t border-border-light/30">
                       <button
                         onClick={(e) => {
@@ -799,7 +796,7 @@ export default function ProductManagement() {
                       >
                         <Trash2 size={14} /> Delete
                       </button>
-                      <Button 
+                      <Button
                         className="py-1.5 px-4 text-sm flex items-center gap-2"
                         onClick={() => {
                           setViewingProduct(null);
@@ -833,13 +830,13 @@ export default function ProductManagement() {
               className="w-full max-w-md"
             >
               <GlassCard className="p-6 relative">
-                <button 
+                <button
                   onClick={() => setIsCategoryModalOpen(false)}
                   className="absolute top-4 right-4 text-text-secondary hover:text-text-primary transition-colors"
                 >
                   <X size={20} />
                 </button>
-                
+
                 <div className="flex items-center gap-3 mb-5">
                   <div className="p-2 bg-brand-caramel/10 text-brand-caramel rounded-lg">
                     <FolderTree size={24} />
