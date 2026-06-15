@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { 
@@ -17,6 +17,13 @@ export default function CompanyLayout() {
   const navigate = useNavigate();
   const signOut = useAuthStore(state => state.signOut);
   const profile = useAuthStore(state => state.profile);
+
+  useEffect(() => {
+    document.title = profile?.shop_name || 'SmartRetails';
+    return () => {
+      document.title = 'SmartRetails';
+    };
+  }, [profile?.shop_name]);
 
   const navItems = [
     { name: 'Dashboard', path: '/company', icon: LayoutDashboard },

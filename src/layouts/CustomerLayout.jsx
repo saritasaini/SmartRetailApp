@@ -41,6 +41,13 @@ export default function CustomerLayout() {
     fetchCompanyName();
   }, [profile?.company_id]);
 
+  useEffect(() => {
+    document.title = companyName || 'SmartRetails';
+    return () => {
+      document.title = 'SmartRetails';
+    };
+  }, [companyName]);
+
   const navItems = [
     { name: 'Home', path: '/customer', icon: Home },
     { name: 'Catalog', path: '/customer/catalog', icon: IceCream },
