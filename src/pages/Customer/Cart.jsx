@@ -31,7 +31,8 @@ export default function CartPage() {
           customer_id: user.id,
           company_id: profile?.company_id,
           total_amount: totalAmount,
-          status: 'pending'
+          status: 'pending',
+          payment_method: paymentMode
         })
         .select()
         .single();

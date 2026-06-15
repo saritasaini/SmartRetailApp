@@ -399,7 +399,16 @@ export default function OrderManagement() {
                     <div className="flex flex-row justify-between items-center gap-4 w-full">
                       <div className="text-left">
                         <p className="text-[11px] uppercase tracking-wider font-semibold text-text-muted mb-0.5">Total Amount</p>
-                        <p className="text-xl font-bold text-brand-caramel">₹{order.total_amount}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xl font-bold text-brand-caramel">₹{order.total_amount}</p>
+                          <span className={`text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${
+                            order.payment_method === 'cod' ? 'bg-brand-pistachio/10 text-brand-pistachio border-brand-pistachio/20' :
+                            order.payment_method === 'upi' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                            'bg-text-secondary/10 text-text-secondary border-border-light'
+                          }`}>
+                            {order.payment_method === 'cod' ? 'COD' : order.payment_method === 'upi' ? 'UPI' : 'Khata'}
+                          </span>
+                        </div>
                       </div>
                       
                       <Button 
