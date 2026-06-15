@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Mahadev</string>
-    <string name="title_activity_main">Mahadev</string>
+    <string name="app_name">SmartRetail App</string>
+    <string name="title_activity_main">SmartRetail App</string>
     <string name="package_name">com.mahadev.app</string>
     <string name="custom_url_scheme">com.mahadev.app</string>
 </resources>
