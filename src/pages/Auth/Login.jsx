@@ -35,7 +35,7 @@ export default function Login() {
         const data = await signIn(email, password);
       
       if (data?.user) {
-        await fetchProfile(data.user.id);
+        await fetchProfile(data.user);
         const profile = useAuthStore.getState().profile;
         
         if (profile) {
