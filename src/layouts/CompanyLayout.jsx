@@ -78,19 +78,6 @@ export default function CompanyLayout() {
             </div>
           </div>
           
-          {/* User Profile Mini */}
-          <div className="px-6 pb-6">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-cream-50 to-cream-100 border border-cream-200">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-strawberry-300 to-strawberry-500 flex items-center justify-center text-white font-bold text-sm uppercase">
-                {profile?.shop_name?.charAt(0) || 'A'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-800 truncate">{profile?.shop_name || 'Admin User'}</p>
-                <p className="text-xs text-gray-400">Store Manager</p>
-              </div>
-              <div className="w-2 h-2 rounded-full bg-mint-400 notification-dot"></div>
-            </div>
-          </div>
 
           {/* Navigation */}
           <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
