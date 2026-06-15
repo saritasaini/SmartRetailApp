@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  
+  /* White & Red Theme Colors */
+  --color-bg-primary: #F9FAFB; /* Very light gray for contrast */
+  --color-bg-secondary: #FFFFFF; /* Pure white for cards */
+  --color-bg-tertiary: #F3F4F6; /* Borders and subtle backgrounds */
+  
+  /* Mapping previous accent names to Red */
+  --color-brand-caramel: #DC2626; /* Primary Red */
+  --color-brand-caramel-dark: #B91C1C; /* Dark Red */
+  --color-brand-caramel-light: #EF4444; /* Light Red */
+  --color-brand-berry: #111827; /* Dark text/accents */
+  --color-brand-pistachio: #16A34A; /* Success Green */
+  --color-brand-honey: #D97706; /* Warning Orange */
+  
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #9CA3AF;
+  
+  --color-border-light: #E5E7EB;
+  --color-border-focus: #DC2626;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  
+  body {
+    @apply bg-bg-primary text-text-primary font-sans antialiased overflow-x-hidden;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-bg-secondary border border-border-light rounded-lg;
+    box-shadow: 0 2px 12px rgba(44, 24, 16, 0.06);
+  }
+  
+  .glass-card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:border-[#D4C4B0];
+    box-shadow: 0 8px 24px rgba(44, 24, 16, 0.1);
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-caramel to-brand-caramel-light;
+  }
+  
+  /* Custom Scrollbar for Creme Brulee theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-bg-tertiary;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border-light rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-brand-caramel/50;
+  }
+}
