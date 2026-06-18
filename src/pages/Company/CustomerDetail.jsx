@@ -15,10 +15,13 @@ export default function CustomerDetail() {
   const [customer, setCustomer] = useState(null);
   const [orders, setOrders] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [purchasedProducts, setPurchasedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' or 'ledger'
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [productSearch, setProductSearch] = useState('');
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalSpent: 0,
@@ -46,7 +49,19 @@ export default function CustomerDetail() {
       // Fetch Customer Orders
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          order_items (
+            quantity,
+            price_at_order,
+            products (
+              id,
+              name,
+              image_url,
+              price
+            )
+          )
+        `)
         .eq('customer_id', id)
         .order('created_at', { ascending: false });
 
@@ -64,6 +79,35 @@ export default function CustomerDetail() {
       if (ordersData) {
         setOrders(ordersData);
         setPayments(paymentsData || []);
+        
+        // Calculate Purchased Products
+        const purchasedItemsMap = new Map();
+        ordersData.forEach(order => {
+          // Only count products from confirmed/delivered orders if needed, 
+          // or count from all non-cancelled orders
+          if (order.status !== 'cancelled' && order.order_items && order.order_items.length > 0) {
+            order.order_items.forEach(item => {
+              if (item.products) {
+                const productId = item.products.id;
+                if (purchasedItemsMap.has(productId)) {
+                  const existing = purchasedItemsMap.get(productId);
+                  existing.quantity += item.quantity;
+                  existing.total_spent += (item.quantity * item.price_at_order);
+                } else {
+                  purchasedItemsMap.set(productId, {
+                    id: productId,
+                    name: item.products.name,
+                    image_url: item.products.image_url,
+                    price: item.products.price,
+                    quantity: item.quantity,
+                    total_spent: item.quantity * item.price_at_order,
+                  });
+                }
+              }
+            });
+          }
+        });
+        setPurchasedProducts(Array.from(purchasedItemsMap.values()).sort((a, b) => b.quantity - a.quantity));
         
         // Calculate Stats
         // ONLY Ledger (Pay Later) orders that are DELIVERED are added to the Due amount
@@ -260,18 +304,24 @@ export default function CustomerDetail() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b border-border-light pb-2">
+      <div className="flex gap-4 border-b border-border-light pb-2 overflow-x-auto scrollbar-hide">
         <button 
           onClick={() => setActiveTab('orders')}
-          className={`px-4 py-2 font-bold transition-all ${activeTab === 'orders' ? 'text-brand-caramel border-b-2 border-brand-caramel' : 'text-text-secondary hover:text-text-primary'}`}
+          className={`px-4 py-2 font-bold whitespace-nowrap transition-all ${activeTab === 'orders' ? 'text-brand-caramel border-b-2 border-brand-caramel' : 'text-text-secondary hover:text-text-primary'}`}
         >
           Order History
         </button>
         <button 
           onClick={() => setActiveTab('ledger')}
-          className={`px-4 py-2 font-bold transition-all ${activeTab === 'ledger' ? 'text-brand-caramel border-b-2 border-brand-caramel' : 'text-text-secondary hover:text-text-primary'}`}
+          className={`px-4 py-2 font-bold whitespace-nowrap transition-all ${activeTab === 'ledger' ? 'text-brand-caramel border-b-2 border-brand-caramel' : 'text-text-secondary hover:text-text-primary'}`}
         >
           Payment Ledger
+        </button>
+        <button 
+          onClick={() => setActiveTab('products')}
+          className={`px-4 py-2 font-bold whitespace-nowrap transition-all ${activeTab === 'products' ? 'text-brand-caramel border-b-2 border-brand-caramel' : 'text-text-secondary hover:text-text-primary'}`}
+        >
+          Purchased Products
         </button>
       </div>
 
@@ -383,11 +433,25 @@ export default function CustomerDetail() {
               </table>
             </div>
           </GlassCard>
-        ) : (
+        ) : activeTab === 'ledger' ? (
           <GlassCard>
-            <div className="mb-4">
-              <h2 className="text-lg font-bold text-text-primary">Payment Ledger</h2>
-              <p className="text-sm text-text-secondary">Complete history of payments made by this customer.</p>
+            <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-text-primary">Payment Ledger</h2>
+                <p className="text-sm text-text-secondary">Complete history of payments made by this customer.</p>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-secondary">
+                  <Search size={16} />
+                </div>
+                <input 
+                  type="text" 
+                  value={ledgerSearch}
+                  onChange={(e) => setLedgerSearch(e.target.value)}
+                  placeholder="Search Ref/UTR, Method, Status..." 
+                  className="pl-9 pr-4 py-2 text-sm rounded-lg border border-border-light bg-bg-secondary text-text-primary focus:outline-none focus:border-brand-caramel transition-all w-full md:w-64"
+                />
+              </div>
             </div>
             
             <div className="overflow-x-auto">
@@ -402,14 +466,24 @@ export default function CustomerDetail() {
                   </tr>
                 </thead>
                 <tbody>
-                  {payments.length === 0 ? (
+                  {payments.filter(p => 
+                    p.reference_id?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+                    p.payment_method?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+                    p.status?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+                    p.amount?.toString().includes(ledgerSearch)
+                  ).length === 0 ? (
                     <tr>
                       <td colSpan="5" className="text-center py-8 text-text-secondary">
-                        No payments found for this customer.
+                        No payments found matching your search.
                       </td>
                     </tr>
                   ) : (
-                    payments.map((payment) => (
+                    payments.filter(p => 
+                      p.reference_id?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+                      p.payment_method?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+                      p.status?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+                      p.amount?.toString().includes(ledgerSearch)
+                    ).map((payment) => (
                       <tr key={payment.id} className="border-b border-border-light/50 hover:bg-bg-primary/5 transition-colors">
                         <td className="py-3 px-4 text-sm text-text-primary whitespace-nowrap">
                           {new Date(payment.created_at).toLocaleDateString()} <span className="text-text-secondary text-xs">{new Date(payment.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
@@ -439,7 +513,76 @@ export default function CustomerDetail() {
               </table>
             </div>
           </GlassCard>
-        )}
+        ) : activeTab === 'products' ? (
+          <GlassCard>
+            <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-text-primary">Purchased Products</h2>
+                <p className="text-sm text-text-secondary">Summary of all products purchased by this customer across all non-cancelled orders.</p>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-secondary">
+                  <Search size={16} />
+                </div>
+                <input 
+                  type="text" 
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Search products..." 
+                  className="pl-9 pr-4 py-2 text-sm rounded-lg border border-border-light bg-bg-secondary text-text-primary focus:outline-none focus:border-brand-caramel transition-all w-full md:w-64"
+                />
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border-light bg-bg-primary/50">
+                    <th className="py-3 px-4 text-sm font-semibold text-text-secondary whitespace-nowrap">Product Name</th>
+                    <th className="py-3 px-4 text-sm font-semibold text-text-secondary whitespace-nowrap text-center">Total Quantity</th>
+                    <th className="py-3 px-4 text-sm font-semibold text-text-secondary whitespace-nowrap">Total Spent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {purchasedProducts.filter(p => 
+                    p.name?.toLowerCase().includes(productSearch.toLowerCase())
+                  ).length === 0 ? (
+                    <tr>
+                      <td colSpan="3" className="text-center py-8 text-text-secondary">
+                        No products found matching your search.
+                      </td>
+                    </tr>
+                  ) : (
+                    purchasedProducts.filter(p => 
+                      p.name?.toLowerCase().includes(productSearch.toLowerCase())
+                    ).map((product) => (
+                      <tr key={product.id} className="border-b border-border-light/50 hover:bg-bg-primary/5 transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                              {product.image_url ? (
+                                  <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-lg object-cover border border-gray-200" />
+                              ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                                      <i className="fas fa-image"></i>
+                                  </div>
+                              )}
+                              <span className="text-sm font-bold text-text-primary">{product.name || 'Unnamed Product'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-sm font-bold text-text-primary whitespace-nowrap text-center">
+                          <span className="bg-brand-pistachio/10 text-brand-pistachio px-3 py-1 rounded-full">{product.quantity} units</span>
+                        </td>
+                        <td className="py-3 px-4 text-sm font-bold text-brand-pistachio whitespace-nowrap">
+                          ₹{product.total_spent.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </GlassCard>
+        ) : null}
       </motion.div>
     </div>
   );

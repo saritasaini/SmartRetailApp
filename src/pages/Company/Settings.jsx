@@ -18,6 +18,48 @@ export default function CompanySettings() {
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', role: 'Staff', salary: '', status: 'active'
   });
+  
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState('');
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !user?.id) return;
+
+    setUploadingLogo(true);
+    setLogoError('');
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(fileName, file);
+        
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ logo_url: publicUrlData.publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+      
+      useAuthStore.setState((state) => ({
+        profile: { ...state.profile, logo_url: publicUrlData.publicUrl }
+      }));
+      
+    } catch (err) {
+      console.error("Logo upload failed:", err);
+      setLogoError(err.message || 'Unknown error');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'members' && profile?.id) {
@@ -111,7 +153,7 @@ export default function CompanySettings() {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto w-full">
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto w-full p-4 md:p-6 lg:p-8">
       <div>
         <h1 className="text-2xl font-bold text-text-primary mb-1">Company Settings</h1>
         <p className="text-text-secondary">Manage your profile, company details, and staff members.</p>
@@ -159,15 +201,43 @@ export default function CompanySettings() {
                 <div className="absolute top-0 left-0 w-64 h-64 bg-brand-caramel/10 blur-3xl rounded-full"></div>
                 
                 <div className="flex items-center gap-5 relative z-10">
-                  <div className="w-20 h-20 bg-gradient-to-br from-brand-caramel/20 to-bg-primary text-brand-caramel rounded-2xl shadow-inner flex items-center justify-center border border-brand-caramel/20 shrink-0 transform transition-transform hover:scale-105 hover:rotate-3 duration-300">
-                    <Store size={32} />
+                  <div className="relative group w-24 h-24 shrink-0">
+                    <div 
+                      className="w-full h-full bg-gradient-to-br from-brand-caramel/20 to-bg-primary text-brand-caramel rounded-2xl shadow-inner flex items-center justify-center border border-brand-caramel/20 overflow-hidden transform transition-transform duration-300 group-hover:scale-105"
+                    >
+                      {uploadingLogo ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-caramel"></div>
+                      ) : profile?.logo_url ? (
+                        <img src={profile.logo_url} alt="Company Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <Store size={36} />
+                      )}
+                    </div>
+                    
+                    {/* Camera Icon Overlay */}
+                    <label className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-gray-500 hover:text-brand-caramel hover:scale-110 transition-all cursor-pointer z-20">
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        disabled={uploadingLogo}
+                        className="hidden"
+                      />
+                      <i className="fas fa-camera text-lg"></i>
+                    </label>
                   </div>
                   
                   <div className="text-left">
                     <h2 className="text-2xl font-bold text-text-primary mb-1">{profile?.shop_name || 'Your Company'}</h2>
-                    <div className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-pistachio px-2.5 py-1 bg-brand-pistachio/10 border border-brand-pistachio/20 rounded-full shadow-sm">
+                    <div className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-pistachio px-2.5 py-1 bg-brand-pistachio/10 border border-brand-pistachio/20 rounded-full shadow-sm mb-2">
                       <Shield size={12} /> Verified Business
                     </div>
+                    {logoError && (
+                      <div className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded border border-red-100 flex items-center gap-1 mt-1 max-w-[250px]">
+                        <AlertCircle size={12} className="shrink-0" />
+                        <span className="truncate" title={logoError}>{logoError}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 

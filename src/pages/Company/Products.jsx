@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
-import { Package, Plus, Edit2, Trash2, X, Check, Search, Image as ImageIcon, Upload, Filter, AlertCircle, ShoppingBag, FolderTree, ChevronDown } from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, X, Check, Search, Image as ImageIcon, Upload, Filter, AlertCircle, ShoppingBag, FolderTree, ChevronDown, ChevronLeft, ChevronRight, ToggleRight, Ban, AlertTriangle, Pen, Trash, SlidersHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ProductManagement() {
@@ -11,11 +12,18 @@ export default function ProductManagement() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
   const [searchTerm, setSearchTerm] = useState('');
+  const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState(() => {
+    return new URLSearchParams(location.search).get('filter') === 'low_stock' ? 'LowStock' : 'All';
+  });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -276,6 +284,15 @@ export default function ProductManagement() {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, statusFilter]);
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
   // Stats
   const totalProducts = products.length;
   const activeProducts = products.filter(p => p.is_active).length;
@@ -283,130 +300,159 @@ export default function ProductManagement() {
   const lowStockProducts = products.filter(p => Number(p.stock_quantity) < 50).length;
 
   return (
-    <div className="space-y-6 relative">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 relative p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-3xl font-bold text-text-primary mb-1">Products Catalog</h1>
-          <p className="text-sm text-text-secondary">Manage your inventory, pricing, and availability.</p>
+          <h2 className="text-[28px] font-[800] text-gray-800 tracking-tight leading-tight mb-1">Products Catalog</h2>
+          <p className="text-[14px] text-gray-500 font-medium">Manage your inventory, pricing, and availability.</p>
         </div>
-        <Button onClick={() => handleOpenModal()} className="md:w-auto w-full py-2">
-          <Plus size={18} /> Add Product
-        </Button>
+        <button
+          onClick={() => handleOpenModal()}
+          className="bg-gradient-to-br from-red-600 to-red-800 text-white border-none py-3 px-6 rounded-xl text-[14px] font-[600] cursor-pointer flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(220,38,38,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(220,38,38,0.4)] w-full md:w-auto"
+        >
+          <Plus size={16} strokeWidth={2.5} />
+          Add Product
+        </button>
       </div>
 
-      {/* Mobile Filter Tabs */}
-      <div className="md:hidden flex overflow-x-auto gap-2 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <button
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
+        {/* Total Products */}
+        <div
           onClick={() => setStatusFilter('All')}
-          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${statusFilter === 'All' ? 'bg-brand-caramel text-white border-brand-caramel shadow-md' : 'bg-bg-tertiary text-text-secondary border-border-light'}`}
+          className={`bg-white rounded-xl p-6 shadow-sm border ${statusFilter === 'All' ? 'border-red-200 shadow-md ring-1 ring-red-100' : 'border-gray-200'} relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer group`}
         >
-          Total Products ({totalProducts})
-        </button>
-        <button
+          <div className="absolute top-0 left-0 right-0 h-1 bg-red-600 rounded-t-xl"></div>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <ShoppingBag size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h3 className="text-[28px] font-[800] text-gray-800 leading-none mb-1">{totalProducts}</h3>
+              <p className="text-[12px] font-[600] text-gray-500">Total Products</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Items */}
+        <div
           onClick={() => setStatusFilter('Active')}
-          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${statusFilter === 'Active' ? 'bg-brand-pistachio text-white border-brand-pistachio shadow-md' : 'bg-bg-tertiary text-text-secondary border-border-light'}`}
+          className={`bg-white rounded-xl p-6 shadow-sm border ${statusFilter === 'Active' ? 'border-emerald-200 shadow-md ring-1 ring-emerald-100' : 'border-gray-200'} relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer group`}
         >
-          Active ({activeProducts})
-        </button>
-        <button
+          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600 rounded-t-xl"></div>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <ToggleRight size={22} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h3 className="text-[28px] font-[800] text-gray-800 leading-none mb-1">{activeProducts}</h3>
+              <p className="text-[12px] font-[600] text-gray-500">Active Items</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Deactive Items */}
+        <div
           onClick={() => setStatusFilter('Deactive')}
-          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${statusFilter === 'Deactive' ? 'bg-gray-500 text-white border-gray-500 shadow-md' : 'bg-bg-tertiary text-text-secondary border-border-light'}`}
+          className={`bg-white rounded-xl p-6 shadow-sm border ${statusFilter === 'Deactive' ? 'border-gray-300 shadow-md ring-1 ring-gray-200' : 'border-gray-200'} relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer group`}
         >
-          Deactive ({deactiveProducts})
-        </button>
-        <button
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gray-500 rounded-t-xl"></div>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <Ban size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h3 className="text-[28px] font-[800] text-gray-800 leading-none mb-1">{deactiveProducts}</h3>
+              <p className="text-[12px] font-[600] text-gray-500">Deactive Items</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Low Stock Alerts */}
+        <div
           onClick={() => setStatusFilter('LowStock')}
-          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${statusFilter === 'LowStock' ? 'bg-brand-honey text-white border-brand-honey shadow-md' : 'bg-bg-tertiary text-text-secondary border-border-light'}`}
+          className={`bg-white rounded-xl p-6 shadow-sm border ${statusFilter === 'LowStock' ? 'border-amber-200 shadow-md ring-1 ring-amber-100' : 'border-gray-200'} relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer group`}
         >
-          Low Stock ({lowStockProducts})
-        </button>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500 rounded-t-xl"></div>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <AlertTriangle size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h3 className="text-[28px] font-[800] text-gray-800 leading-none mb-1">{lowStockProducts}</h3>
+              <p className="text-[12px] font-[600] text-gray-500">Low Stock Alerts</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Mini Dashboard Stats (Desktop only) */}
-      <div className="hidden md:grid md:grid-cols-4 gap-4">
-        <GlassCard
-          onClick={() => setStatusFilter('All')}
-          className={`relative overflow-hidden flex items-center gap-4 py-4 px-5 cursor-pointer transition-all duration-300 ${statusFilter === 'All' ? 'shadow-lg scale-[1.02] bg-brand-caramel/5 border border-brand-caramel/20' : 'hover:bg-bg-primary/50 hover:scale-[1.01] border border-transparent'}`}
-        >
-          <div className={`absolute bottom-0 left-0 h-1 bg-brand-caramel transition-all duration-500 ease-out ${statusFilter === 'All' ? 'w-full' : 'w-0'}`}></div>
-          <div className="p-3 rounded-lg bg-brand-caramel/10 text-brand-caramel">
-            <ShoppingBag size={24} />
-          </div>
-          <div>
-            <p className="text-sm text-text-secondary font-medium">Total Products</p>
-            <h3 className="text-xl font-bold text-text-primary">{totalProducts}</h3>
-          </div>
-        </GlassCard>
-
-        <GlassCard
-          onClick={() => setStatusFilter('Active')}
-          className={`relative overflow-hidden flex items-center gap-4 py-4 px-5 cursor-pointer transition-all duration-300 ${statusFilter === 'Active' ? 'shadow-lg scale-[1.02] bg-brand-pistachio/5 border border-brand-pistachio/20' : 'hover:bg-bg-primary/50 hover:scale-[1.01] border border-transparent'}`}
-        >
-          <div className={`absolute bottom-0 left-0 h-1 bg-brand-pistachio transition-all duration-500 ease-out ${statusFilter === 'Active' ? 'w-full' : 'w-0'}`}></div>
-          <div className="p-3 rounded-lg bg-brand-pistachio/10 text-brand-pistachio">
-            <FolderTree size={24} />
-          </div>
-          <div>
-            <p className="text-sm text-text-secondary font-medium">Active Items</p>
-            <h3 className="text-xl font-bold text-text-primary">{activeProducts}</h3>
-          </div>
-        </GlassCard>
-
-        <GlassCard
-          onClick={() => setStatusFilter('Deactive')}
-          className={`relative overflow-hidden flex items-center gap-4 py-4 px-5 cursor-pointer transition-all duration-300 ${statusFilter === 'Deactive' ? 'shadow-lg scale-[1.02] bg-gray-500/5 border border-gray-500/20' : 'hover:bg-bg-primary/50 hover:scale-[1.01] border border-transparent'}`}
-        >
-          <div className={`absolute bottom-0 left-0 h-1 bg-gray-500 transition-all duration-500 ease-out ${statusFilter === 'Deactive' ? 'w-full' : 'w-0'}`}></div>
-          <div className="p-3 rounded-lg bg-gray-500/10 text-gray-500">
-            <X size={24} />
-          </div>
-          <div>
-            <p className="text-sm text-text-secondary font-medium">Deactive Items</p>
-            <h3 className="text-xl font-bold text-text-primary">{deactiveProducts}</h3>
-          </div>
-        </GlassCard>
-
-        <GlassCard
-          onClick={() => setStatusFilter('LowStock')}
-          className={`relative overflow-hidden flex items-center gap-4 py-4 px-5 cursor-pointer transition-all duration-300 ${statusFilter === 'LowStock' ? 'shadow-lg scale-[1.02] bg-brand-honey/5 border border-brand-honey/20' : 'hover:bg-bg-primary/50 hover:scale-[1.01] border border-transparent'}`}
-        >
-          <div className={`absolute bottom-0 left-0 h-1 bg-brand-honey transition-all duration-500 ease-out ${statusFilter === 'LowStock' ? 'w-full' : 'w-0'}`}></div>
-          <div className="p-3 rounded-lg bg-brand-honey/10 text-brand-honey">
-            <AlertCircle size={24} />
-          </div>
-          <div>
-            <p className="text-sm text-text-secondary font-medium">Low Stock Alerts</p>
-            <h3 className="text-xl font-bold text-text-primary">{lowStockProducts}</h3>
-          </div>
-        </GlassCard>
-      </div>
-
-      {/* Search & Filters */}
-      <div className="flex flex-col md:flex-row gap-3">
-        <GlassCard className="flex items-center gap-2 flex-1 py-2 px-4">
-          <Search className="text-text-secondary" size={18} />
+      {/* Search Section */}
+      <div className="flex gap-3 mb-6 flex-col md:flex-row">
+        <div className="flex-1 relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
             placeholder="Search products by name or category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-transparent border-none text-sm text-text-primary focus:outline-none w-full"
+            className="w-full py-3.5 pr-4 pl-12 border border-gray-200 rounded-xl text-[14px] text-gray-800 bg-white shadow-sm transition-all duration-200 focus:outline-none focus:border-red-600 focus:ring-4 focus:ring-red-50 placeholder:text-gray-400"
           />
-        </GlassCard>
-
-        <div className="relative md:w-64 z-40">
-          <GlassCard
-            className="flex items-center justify-between py-2 px-4 cursor-pointer h-full"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+        </div>
+        <div className="relative z-40 hidden md:block">
+          <button
+            onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+            className="flex items-center gap-2 py-3.5 px-6 border border-gray-200 rounded-xl bg-white text-gray-500 text-[14px] font-[500] shadow-sm transition-all duration-200 hover:border-red-200 hover:shadow-md cursor-pointer whitespace-nowrap h-full"
           >
-            <div className="flex items-center gap-2">
-              <Filter className="text-text-secondary" size={18} />
-              <span className="text-sm text-text-primary truncate">
-                {selectedCategory === 'All' ? 'All Categories' : categories.find(c => c.id === selectedCategory)?.name || 'Select Category'}
-              </span>
-            </div>
-            <ChevronDown size={16} className={`text-text-secondary transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-          </GlassCard>
+            <SlidersHorizontal size={16} />
+            {statusFilter === 'All' ? 'Filters' : statusFilter === 'LowStock' ? 'Low Stock' : statusFilter}
+            <ChevronDown size={14} className={`ml-1 transition-transform ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          <AnimatePresence>
+            {isStatusDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute top-full left-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-50 flex flex-col overflow-hidden"
+              >
+                <div
+                  className={`px-4 py-2.5 text-[14px] cursor-pointer transition-all duration-300 hover:pl-6 hover:bg-gray-50 ${statusFilter === 'All' ? 'text-red-600 font-[600] bg-red-50/50' : 'text-gray-700'}`}
+                  onClick={() => { setStatusFilter('All'); setIsStatusDropdownOpen(false); }}
+                >
+                  All Status
+                </div>
+                <div
+                  className={`px-4 py-2.5 text-[14px] cursor-pointer transition-all duration-300 hover:pl-6 hover:bg-gray-50 ${statusFilter === 'Active' ? 'text-red-600 font-[600] bg-red-50/50' : 'text-gray-700'}`}
+                  onClick={() => { setStatusFilter('Active'); setIsStatusDropdownOpen(false); }}
+                >
+                  Active
+                </div>
+                <div
+                  className={`px-4 py-2.5 text-[14px] cursor-pointer transition-all duration-300 hover:pl-6 hover:bg-gray-50 ${statusFilter === 'Deactive' ? 'text-red-600 font-[600] bg-red-50/50' : 'text-gray-700'}`}
+                  onClick={() => { setStatusFilter('Deactive'); setIsStatusDropdownOpen(false); }}
+                >
+                  Deactive
+                </div>
+                <div
+                  className={`px-4 py-2.5 text-[14px] cursor-pointer transition-all duration-300 hover:pl-6 hover:bg-gray-50 ${statusFilter === 'LowStock' ? 'text-red-600 font-[600] bg-red-50/50' : 'text-gray-700'}`}
+                  onClick={() => { setStatusFilter('LowStock'); setIsStatusDropdownOpen(false); }}
+                >
+                  Low Stock
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="relative z-40">
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center justify-between gap-2 py-3.5 px-6 border border-gray-200 rounded-xl bg-white text-gray-500 text-[14px] font-[500] shadow-sm transition-all duration-200 hover:border-red-200 hover:shadow-md cursor-pointer whitespace-nowrap h-full min-w-[200px]"
+          >
+            <span>{selectedCategory === 'All' ? 'All Categories' : categories.find(c => c.id === selectedCategory)?.name || 'Select Category'}</span>
+            <ChevronDown size={16} className={`transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
 
           <AnimatePresence>
             {isDropdownOpen && (
@@ -414,10 +460,10 @@ export default function ProductManagement() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-bg-secondary border border-border-light rounded-lg shadow-lg custom-scrollbar z-50 flex flex-col"
+                className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg custom-scrollbar z-50 flex flex-col"
               >
                 <div
-                  className={`px-4 py-2.5 text-sm cursor-pointer transition-all duration-300 hover:pl-6 hover:bg-bg-primary ${selectedCategory === 'All' ? 'text-brand-caramel font-semibold bg-bg-primary/50' : 'text-text-primary'}`}
+                  className={`px-4 py-2.5 text-[14px] cursor-pointer transition-all duration-300 hover:pl-6 hover:bg-gray-50 ${selectedCategory === 'All' ? 'text-red-600 font-[600] bg-red-50/50' : 'text-gray-700'}`}
                   onClick={() => { setSelectedCategory('All'); setIsDropdownOpen(false); }}
                 >
                   All Categories
@@ -425,14 +471,14 @@ export default function ProductManagement() {
                 {categories.map(c => (
                   <div
                     key={c.id}
-                    className={`px-4 py-2.5 text-sm cursor-pointer transition-all duration-300 hover:pl-6 hover:bg-bg-primary ${selectedCategory === c.id ? 'text-brand-caramel font-semibold bg-bg-primary/50' : 'text-text-primary'}`}
+                    className={`px-4 py-2.5 text-[14px] cursor-pointer transition-all duration-300 hover:pl-6 hover:bg-gray-50 ${selectedCategory === c.id ? 'text-red-600 font-[600] bg-red-50/50' : 'text-gray-700'}`}
                     onClick={() => { setSelectedCategory(c.id); setIsDropdownOpen(false); }}
                   >
                     {c.name}
                   </div>
                 ))}
                 <div
-                  className="sticky bottom-0 z-10 px-4 py-3 text-sm cursor-pointer font-bold bg-red-500 text-white hover:bg-red-600 transition-all duration-300 flex items-center justify-center gap-2 mt-auto shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
+                  className="sticky bottom-0 z-10 px-4 py-3 text-[14px] cursor-pointer font-[700] bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center justify-center gap-2 mt-auto"
                   onClick={() => { setIsDropdownOpen(false); handleAddCategoryClick(); }}
                 >
                   <Plus size={16} /> Add Category
@@ -443,103 +489,140 @@ export default function ProductManagement() {
         </div>
       </div>
 
-      {/* Products Table (Compact Row Type) */}
-      <GlassCard className="overflow-hidden p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-border-light bg-bg-tertiary/30">
-                <th className="py-3 px-2 md:px-4 text-[10px] md:text-xs font-semibold text-text-secondary uppercase tracking-wider w-8 md:w-12 text-center md:text-left">S.No.</th>
-                <th className="py-3 px-2 md:px-4 text-[10px] md:text-xs font-semibold text-text-secondary uppercase tracking-wider w-12 md:w-16 text-center md:text-left">Image</th>
-                <th className="py-3 px-2 md:px-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Product Info</th>
-                <th className="py-3 px-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Category</th>
-                <th className="py-3 px-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Price</th>
-                <th className="py-3 px-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Stock</th>
-                <th className="py-3 px-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Status</th>
-                <th className="py-3 px-4 text-xs font-semibold text-text-secondary uppercase tracking-wider text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm">
-              {loading ? (
-                <tr>
-                  <td colSpan="8" className="text-center py-8 text-text-secondary text-sm">Loading products...</td>
-                </tr>
-              ) : filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="text-center py-8 text-text-secondary text-sm">No products match your search.</td>
-                </tr>
-              ) : (
-                filteredProducts.map((product, index) => (
-                  <tr key={product.id} className="border-b border-border-light/50 hover:bg-bg-primary/5 transition-colors">
-                    <td className="py-3 px-2 md:px-4 text-xs md:text-sm font-medium text-text-secondary text-center md:text-left">{index + 1}</td>
-                    <td className="py-3 px-2 md:px-4 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setViewingProduct(product)}>
-                      <div className="w-8 h-8 md:w-10 md:h-10 mx-auto md:mx-0 bg-bg-tertiary rounded-md overflow-hidden flex items-center justify-center border border-border-light">
-                        {product.image_url ? (
-                          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <ImageIcon className="text-text-muted" size={16} />
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-2 px-2 md:px-4 cursor-pointer group" onClick={() => setViewingProduct(product)}>
-                      <p className="font-semibold text-sm md:text-base text-text-primary leading-tight group-hover:text-brand-caramel transition-colors">{product.name}</p>
-                      {product.description && (
-                        <p className="text-xs text-text-muted truncate max-w-[180px] mt-0.5">{product.description}</p>
-                      )}
-                    </td>
-                    <td className="py-2 px-4">
-                      <span className="text-xs font-medium text-text-secondary bg-bg-tertiary px-2 py-0.5 rounded-md border border-border-light whitespace-nowrap">
-                        {product.categories?.name}
-                      </span>
-                    </td>
-                    <td className="py-2 px-4">
-                      <p className="font-bold text-brand-caramel leading-tight">₹{product.price}</p>
-                      <p className="text-[10px] text-text-secondary uppercase">per {product.unit}</p>
-                    </td>
-                    <td className="py-2 px-4">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${product.stock_quantity >= 100 ? 'bg-brand-pistachio/10 text-brand-pistachio' :
-                          product.stock_quantity >= 50 ? 'bg-brand-honey/10 text-brand-honey' :
-                            'bg-brand-caramel/10 text-brand-caramel'
-                        }`}>
-                        {product.stock_quantity}
-                      </span>
-                    </td>
-                    <td className="py-2 px-4">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleStatus(product.id, product.is_active); }}
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-colors ${product.is_active
-                            ? 'bg-brand-pistachio/10 text-brand-pistachio hover:bg-brand-pistachio/20'
-                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                          }`}
-                      >
-                        {product.is_active ? 'ACTIVE' : 'DEACTIVE'}
-                      </button>
-                    </td>
-                    <td className="py-2 px-4">
-                      <div className="flex gap-1 justify-end">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleOpenModal(product); }}
-                          className="p-1.5 text-text-secondary hover:text-brand-caramel hover:bg-brand-caramel/10 rounded-md transition-colors"
-                          title="Edit Product"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
-                          className="p-1.5 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                          title="Delete Product"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Table Container */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Table Header */}
+        <div className="hidden md:grid grid-cols-[60px_minmax(250px,2fr)_minmax(140px,1fr)_minmax(100px,1fr)_minmax(80px,0.5fr)_minmax(120px,1fr)_100px] px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <span className="text-[12px] font-[700] text-gray-500 uppercase tracking-wide">S.No.</span>
+          <span className="text-[12px] font-[700] text-gray-500 uppercase tracking-wide">Product</span>
+          <span className="text-[12px] font-[700] text-gray-500 uppercase tracking-wide">Category</span>
+          <span className="text-[12px] font-[700] text-gray-500 uppercase tracking-wide">Price</span>
+          <span className="text-[12px] font-[700] text-gray-500 uppercase tracking-wide">Stock</span>
+          <span className="text-[12px] font-[700] text-gray-500 uppercase tracking-wide">Status</span>
+          <span className="text-[12px] font-[700] text-gray-500 uppercase tracking-wide text-right">Actions</span>
         </div>
-      </GlassCard>
+
+        {/* Table Body */}
+        <div className="flex flex-col">
+          {loading ? (
+            <div className="text-center py-8 text-gray-500 text-[14px]">Loading products...</div>
+          ) : paginatedProducts.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 text-[14px]">No products match your search.</div>
+          ) : (
+            paginatedProducts.map((product, index) => {
+              const catName = (product.categories?.name || '').toLowerCase();
+              const badgeColors = catName.includes('kulfi') ? 'bg-red-50 text-red-600' :
+                                  catName.includes('cake') ? 'bg-emerald-50 text-emerald-600' :
+                                  catName.includes('sweet') ? 'bg-amber-50 text-amber-600' :
+                                  'bg-purple-50 text-purple-600';
+
+              const isLow = product.stock_quantity < 50;
+              const isMed = product.stock_quantity < 100 && product.stock_quantity >= 50;
+              const stockColor = isLow ? 'text-red-600' : isMed ? 'text-amber-600' : 'text-emerald-600';
+
+              return (
+                <div key={product.id} className={`grid grid-cols-1 md:grid-cols-[60px_minmax(250px,2fr)_minmax(140px,1fr)_minmax(100px,1fr)_minmax(80px,0.5fr)_minmax(120px,1fr)_100px] px-4 md:px-6 py-4 items-center border-b border-gray-200 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(0,0,0,0.08)] hover:bg-white hover:z-10 relative group ${product.is_active ? 'active-item' : ''}`}>
+                  <div className="absolute left-0 top-2 bottom-2 w-[3px] bg-red-600 rounded-r-md opacity-0 group-hover:opacity-100 transition-opacity hidden md:block"></div>
+                  
+                  <span className="hidden md:block text-[14px] text-gray-400 font-[500]">{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</span>
+                  
+                  <div className="flex items-center gap-3.5 mb-3 md:mb-0 cursor-pointer" onClick={() => setViewingProduct(product)}>
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 overflow-hidden border border-gray-200 shrink-0">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <ImageIcon size={18} />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-[14px] font-[700] text-gray-800 mb-0.5">{product.name}</h4>
+                      <span className="text-[12px] text-gray-400">SKU: MHV-{product.id.toString().substring(0, 4)}</span>
+                    </div>
+                  </div>
+
+                  <div className="hidden md:block">
+                    <span className={`inline-block px-3.5 py-1.5 rounded-full text-[12px] font-[600] ${badgeColors}`}>
+                      {product.categories?.name || 'Uncategorized'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between md:block mb-2 md:mb-0">
+                    <span className="md:hidden text-[12px] font-[700] text-gray-500 uppercase">Price:</span>
+                    <div>
+                      <div className="text-[16px] font-[800] text-red-600">₹{product.price}</div>
+                      <div className="text-[11px] text-gray-400 font-[500]">per {product.unit}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between md:block mb-2 md:mb-0">
+                    <span className="md:hidden text-[12px] font-[700] text-gray-500 uppercase">Stock:</span>
+                    <span className={`text-[14px] font-[700] ${stockColor}`}>{product.stock_quantity}</span>
+                  </div>
+
+                  <div className="flex justify-between md:block mb-3 md:mb-0">
+                    <span className="md:hidden text-[12px] font-[700] text-gray-500 uppercase">Status:</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleStatus(product.id, product.is_active); }}
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-[700] transition-colors ${product.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${product.is_active ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
+                      {product.is_active ? 'ACTIVE' : 'DEACTIVE'}
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleOpenModal(product); }}
+                      className="w-8 h-8 rounded-full border border-gray-200 bg-white text-gray-500 flex items-center justify-center transition-all duration-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                      title="Edit Product"
+                    >
+                      <Pen size={13} fill="currentColor" strokeWidth={1} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
+                      className="w-8 h-8 rounded-full border border-gray-200 bg-white text-gray-500 flex items-center justify-center transition-all duration-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                      title="Delete Product"
+                    >
+                      <Trash size={13} strokeWidth={2} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="w-9 h-9 rounded-full border-none bg-transparent text-gray-500 text-[18px] flex items-center justify-center cursor-pointer hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          {[...Array(totalPages)].map((_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => setCurrentPage(i + 1)}
+              className={`w-9 h-9 rounded-full border-none flex items-center justify-center text-[14px] font-[600] cursor-pointer transition-all ${currentPage === i + 1 ? 'bg-red-600 text-white shadow-[0_4px_12px_rgba(220,38,38,0.3)]' : 'bg-transparent text-gray-500 hover:bg-gray-100'}`}
+            >
+              {i + 1}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="w-9 h-9 rounded-full border-none bg-transparent text-gray-500 text-[18px] flex items-center justify-center cursor-pointer hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       <AnimatePresence>

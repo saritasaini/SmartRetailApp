@@ -40,13 +40,16 @@ export default function Login() {
         const profile = useAuthStore.getState().profile;
         
         if (profile) {
-          if (profile.role === 'customer' && !profile.is_approved) {
+          if (!profile.is_approved && profile.role !== 'super_admin') {
             await signOut();
-            setError('Account pending approval. Please wait for company confirmation.');
+            setError('Your account has been deactivated or is pending approval. Please contact administration.');
             return;
           }
-          
-          navigate(profile.role === 'company' ? '/company' : '/customer');
+          if (profile.role === 'super_admin') {
+            navigate('/admin');
+          } else {
+            navigate(profile.role === 'company' ? '/company' : '/customer');
+          }
         } else {
           await signOut();
           setError('Profile not found for this account. Please contact support.');

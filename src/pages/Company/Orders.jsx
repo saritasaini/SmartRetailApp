@@ -1,111 +1,148 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
-import GlassCard from '../../components/ui/GlassCard';
-import Button from '../../components/ui/Button';
-import { ShoppingCart, Search, ChevronDown, Check } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Search, ChevronDown, Check, Clock, Truck, Package, ClipboardCheck, ChevronRight, User, CreditCard, Banknote, ChevronLeft } from 'lucide-react';
 import InvoiceModal from '../../components/ui/InvoiceModal';
 
-const STATUS_OPTIONS = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'out_for_delivery', label: 'Out for Delivery' },
-  { value: 'delivered', label: 'Delivered' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
 function OrderStatusPath({ order, onUpdateStatus }) {
-  const [selectedStatus, setSelectedStatus] = useState(order.status);
-  
-  useEffect(() => {
-    setSelectedStatus(order.status);
-  }, [order.status]);
-
   const stages = [
-    { id: 'pending', label: 'Pending' },
-    { id: 'confirmed', label: 'Confirmed' },
-    { id: 'out_for_delivery', label: 'Out for Delivery' },
-    { id: 'delivered', label: 'Delivered' }
+    { id: 'pending', label: 'Pending', icon: Clock },
+    { id: 'confirmed', label: 'Confirmed', icon: ClipboardCheck },
+    { id: 'out_for_delivery', label: 'Out For Delivery', icon: Truck },
+    { id: 'delivered', label: 'Delivered', icon: Package }
   ];
 
   const currentIndex = stages.findIndex(s => s.id === order.status);
-  const selectedIndex = stages.findIndex(s => s.id === selectedStatus);
+  const isCancelled = order.status === 'cancelled';
+  const isDelivered = order.status === 'delivered';
 
-  if (order.status === 'cancelled') {
+  if (isCancelled) {
     return (
-      <div className="w-full bg-red-50 text-red-600 rounded-lg p-3 text-center font-bold text-sm border border-red-200 mt-4">
-        This order has been cancelled.
+      <div className="mt-5 pt-5 border-t border-gray-200">
+        <div className="w-full bg-red-50 text-red-600 rounded-lg p-3 text-center font-[600] text-[14px] border border-red-200">
+           This order has been cancelled.
+        </div>
+        <div className="flex justify-end mt-4">
+            <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-[700] bg-red-100 text-red-700">
+                <span className="w-2 h-2 rounded-full bg-red-600"></span> Cancelled
+            </span>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex flex-col xl:flex-row items-center gap-4 w-full mt-6 pt-4 border-t border-gray-100">
-      <div className="flex flex-1 w-full overflow-hidden rounded-md border border-gray-200 bg-white">
-        {stages.map((stage, i) => {
-          const isCompleted = currentIndex > i;
-          const isActive = currentIndex === i;
-          const isSelected = selectedIndex === i;
-          
-          let bgColor = 'bg-gray-100 text-gray-500 hover:bg-gray-200';
-          if (isCompleted) bgColor = 'bg-emerald-500 text-white hover:bg-emerald-600';
-          else if (isActive) bgColor = 'bg-blue-600 text-white';
-          
-          if (isSelected && !isActive && !isCompleted) {
-             bgColor = 'bg-blue-50 text-blue-700 font-bold';
-          }
-          
-          const isFirst = i === 0;
-          const isLast = i === stages.length - 1;
+  // Calculate progress fill width based on 4 steps
+  const progressWidth = currentIndex === 0 ? '0%' : 
+                        currentIndex === 1 ? '33%' : 
+                        currentIndex === 2 ? '66%' : '100%';
 
-          return (
+  return (
+    <div className="mt-5 pt-5 border-t border-gray-200">
+        <div className="flex items-center relative">
+            <div className="absolute top-4 left-[12.5%] right-[12.5%] h-1 bg-gray-200 z-0">
+                <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-sm transition-all duration-500" style={{ width: progressWidth }}></div>
+            </div>
+            
+            {stages.map((stage, i) => {
+                const isCompleted = currentIndex > i;
+                const isCurrent = currentIndex === i;
+                const isClickable = i > currentIndex;
+                const Icon = isCompleted ? Check : stage.icon;
+
+                return (
+                    <div key={stage.id} className={`flex-1 flex flex-col items-center relative z-10 ${isClickable ? 'cursor-pointer' : 'cursor-default'}`} onClick={() => isClickable && onUpdateStatus(stage.id)} title={isClickable ? "Click to update status to this stage" : ""}>
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[14px] mb-2 transition-all duration-300 border-[3px] ${
+                            isCompleted ? 'bg-emerald-600 border-emerald-600 text-white' :
+                            isCurrent ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_0_4px_rgba(219,234,254,1)]' :
+                            isClickable ? 'bg-white border-gray-200 text-gray-400 hover:border-gray-300' :
+                            'bg-white border-gray-200 text-gray-400'
+                        }`}>
+                            <Icon size={14} />
+                        </div>
+                        <span className={`text-[12px] font-[600] text-center ${
+                            isCompleted ? 'text-emerald-600' :
+                            isCurrent ? 'text-blue-600' :
+                            'text-gray-500'
+                        }`}>
+                            {stage.label}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+
+        <div className="flex justify-between items-center mt-6">
+            <div>
+               {currentIndex >= 0 && currentIndex < stages.length - 1 && (
+                  <button onClick={() => onUpdateStatus(stages[currentIndex + 1].id)} className="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors rounded-lg text-[13px] font-[600] flex items-center gap-2">
+                      Mark {stages[currentIndex + 1].label} <ChevronRight size={14} />
+                  </button>
+               )}
+            </div>
+            <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-[700] ${
+                currentIndex === stages.length - 1 ? 'bg-emerald-100 text-emerald-700' : 
+                currentIndex === 0 ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+            }`}>
+                <span className={`w-2 h-2 rounded-full ${
+                    currentIndex === stages.length - 1 ? 'bg-emerald-600' : 
+                    currentIndex === 0 ? 'bg-blue-600' : 'bg-amber-600'
+                }`}></span>
+                {currentIndex === stages.length - 1 ? 'Completed' : currentIndex === 0 ? 'New Order' : 'In Progress'}
+            </span>
+        </div>
+    </div>
+  );
+}
+
+function CustomDropdown({ value, onChange, options, className }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(opt => opt.value === value);
+
+  return (
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between py-3.5 pl-5 pr-4 border rounded-xl text-[14px] font-[500] shadow-sm transition-all duration-200 focus:outline-none ${
+          isOpen ? 'border-red-200 ring-4 ring-red-50 bg-white text-gray-800' : 'border-gray-200 bg-white text-gray-500 hover:border-red-200 hover:shadow-md'
+        }`}
+      >
+        {selectedOption ? selectedOption.label : 'Select...'}
+        <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] overflow-hidden py-1">
+          {options.map((option) => (
             <button
-              key={stage.id}
-              onClick={() => setSelectedStatus(stage.id)}
-              className={`relative flex-1 py-2 px-2 sm:px-4 text-[10px] sm:text-xs font-semibold transition-colors focus:outline-none flex items-center justify-center min-w-[70px] sm:min-w-[100px]
-                ${bgColor}
-              `}
-              style={{
-                clipPath: isFirst 
-                  ? 'polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)'
-                  : isLast
-                  ? 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%)'
-                  : 'polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)',
-                marginLeft: isFirst ? '0' : '-9px',
-                paddingLeft: isFirst ? '8px' : '18px',
-                paddingRight: isLast ? '8px' : '18px'
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
               }}
+              className={`w-full text-left px-5 py-2.5 text-[14px] transition-colors ${
+                value === option.value 
+                  ? 'bg-red-50 text-red-600 font-[600]' 
+                  : 'text-gray-600 hover:bg-gray-50 font-[500]'
+              }`}
             >
-              {isCompleted ? (
-                <Check size={14} className="shrink-0" />
-              ) : (
-                <span className="truncate">{stage.label}</span>
-              )}
+              {option.label}
             </button>
-          );
-        })}
-      </div>
-      
-      {/* Action Button */}
-      {selectedStatus !== order.status ? (
-        <Button 
-          onClick={() => onUpdateStatus(selectedStatus)}
-          className="shrink-0 py-2 w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-        >
-          <Check size={16} className="mr-2" /> Mark as Current
-        </Button>
-      ) : currentIndex < stages.length - 1 ? (
-        <Button 
-          onClick={() => onUpdateStatus(stages[currentIndex + 1].id)}
-          className="shrink-0 py-2 w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-        >
-          <Check size={16} className="mr-2" /> Mark {stages[currentIndex + 1].label}
-        </Button>
-      ) : (
-         <div className="shrink-0 py-2 px-4 w-full xl:w-auto bg-emerald-100 text-emerald-700 rounded-lg text-sm font-bold flex items-center justify-center">
-            <Check size={16} className="mr-2" /> Completed
-         </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -121,18 +158,10 @@ export default function OrderManagement() {
   const [sortBy, setSortBy] = useState('newest');
   const [fetchError, setFetchError] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
-  const [openDropdownId, setOpenDropdownId] = useState(null);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setOpenDropdownId(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -215,7 +244,8 @@ export default function OrderManagement() {
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       order.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      order.profiles?.shop_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      order.profiles?.shop_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.profiles?.owner_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
@@ -249,191 +279,199 @@ export default function OrderManagement() {
     return 0;
   });
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'delivered': return 'bg-brand-pistachio/10 text-brand-pistachio border-brand-pistachio/20';
-      case 'confirmed': return 'bg-brand-berry/10 text-brand-berry border-brand-berry/20'; // previously cancelled theme
-      case 'out_for_delivery': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'cancelled': return 'bg-red-500/10 text-red-600 border-red-500/20'; // previously confirmed theme, now purely red
-      case 'cancelled': return 'bg-red-500/10 text-red-600 border-red-500/20';
-      default: return 'bg-brand-honey/10 text-brand-honey border-yellow-500/20';
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  const getCardBorderColor = (status) => {
+    switch (status) {
+      case 'delivered': return 'bg-emerald-600';
+      case 'cancelled': return 'bg-gray-400';
+      case 'out_for_delivery': return 'bg-blue-600';
+      case 'confirmed': return 'bg-amber-600';
+      default: return 'bg-red-600'; // pending
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 print:hidden">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
-            Order Management
-          </h1>
-          <p className="text-text-secondary mt-1 text-sm">
-            View and manage customer orders in real-time.
-          </p>
-        </div>
+    <div className="space-y-6 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
+      {/* Header */}
+      <div className="mb-7">
+          <h2 className="text-[28px] font-[800] text-gray-800 mb-1.5 tracking-tight">Order Management</h2>
+          <p className="text-[14px] text-gray-500">View and manage customer orders in real-time.</p>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 print:hidden">
-        <div className="flex flex-col gap-4">
-          {/* Status Tabs */}
-          <div className="flex gap-2 w-full overflow-x-auto pb-2 scrollbar-hide border-b border-border-light/50">
-            {['all', 'pending', 'confirmed', 'out_for_delivery', 'delivered', 'cancelled'].map(status => (
-              <button
+      {/* Order Tabs */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {['all', 'pending', 'confirmed', 'out_for_delivery', 'delivered', 'cancelled'].map(status => {
+          const count = orders.filter(o => status === 'all' ? true : o.status === status).length;
+          return (
+            <button
                 key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  statusFilter === status 
-                    ? 'bg-brand-caramel/10 text-brand-caramel border border-brand-caramel/20' 
-                    : 'text-text-secondary hover:bg-white/50'
+                onClick={() => { setStatusFilter(status); setCurrentPage(1); }}
+                className={`px-5 py-2.5 border rounded-xl text-[14px] font-[500] transition-all duration-200 flex items-center gap-2 ${
+                statusFilter === status 
+                    ? 'bg-red-50 text-red-600 border-red-600 font-[600]' 
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-red-200 hover:shadow-sm'
                 }`}
-              >
+            >
                 {status === 'all' ? 'All Orders' : status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </button>
-            ))}
+                {count > 0 && (
+                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-[700] ${
+                    statusFilter === status ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-500'
+                }`}>
+                    {count}
+                </span>
+                )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Search Section */}
+      <div className="flex gap-3 mb-8 flex-wrap">
+          <div className="flex-1 relative min-w-[250px]">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input 
+                  type="text" 
+                  placeholder="Search Order ID, Shop name, or customer..." 
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                  className="w-full py-3.5 pr-4 pl-12 border border-gray-200 rounded-xl text-[14px] text-gray-800 bg-white shadow-sm transition-all duration-200 focus:outline-none focus:border-red-600 focus:ring-4 focus:ring-red-50 placeholder:text-gray-400"
+              />
           </div>
           
-          {/* Additional Filters */}
-          <div className="flex flex-col lg:flex-row items-center gap-3 w-full">
-            <div className="relative w-full sm:w-auto sm:min-w-[250px] flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={18} />
-              <input 
-                type="text"
-                placeholder="Search Order ID, Shop..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-color bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-caramel/50 transition-all"
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 sm:flex items-center gap-3 w-full lg:w-auto">
-              <div className="relative col-span-2 sm:col-span-1 w-full">
-                <select
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="w-full pl-3 pr-8 sm:px-4 py-2 rounded-lg border border-border-color bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-caramel/50 transition-all text-sm font-medium cursor-pointer appearance-none"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" size={16} />
-              </div>
+          <CustomDropdown 
+            value={dateFilter} 
+            onChange={(val) => { setDateFilter(val); setCurrentPage(1); }} 
+            options={[
+              { value: 'all', label: 'All Time' },
+              { value: 'today', label: 'Today' },
+              { value: 'yesterday', label: 'Yesterday' }
+            ]} 
+            className="min-w-[140px]" 
+          />
 
-              <div className="relative col-span-1 w-full">
-                <select
-                  value={amountFilter}
-                  onChange={(e) => setAmountFilter(e.target.value)}
-                  className="w-full pl-2 pr-5 sm:px-4 py-2 rounded-lg border border-border-color bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-caramel/50 transition-all text-xs sm:text-sm font-medium cursor-pointer text-ellipsis appearance-none"
-                >
-                  <option value="all">All Amounts</option>
-                  <option value="under_500">Under ₹500</option>
-                  <option value="500_to_2000">₹500 - ₹2000</option>
-                  <option value="over_2000">Over ₹2000</option>
-                </select>
-                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" size={14} />
-              </div>
+          <CustomDropdown 
+            value={amountFilter} 
+            onChange={(val) => { setAmountFilter(val); setCurrentPage(1); }} 
+            options={[
+              { value: 'all', label: 'All Amounts' },
+              { value: 'under_500', label: 'Under ₹500' },
+              { value: '500_to_2000', label: '₹500 - ₹2000' },
+              { value: 'over_2000', label: 'Over ₹2000' }
+            ]} 
+            className="min-w-[160px]" 
+          />
 
-              <div className="relative col-span-1 w-full">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full pl-2 pr-5 sm:px-4 py-2 rounded-lg border border-border-color bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-caramel/50 transition-all text-xs sm:text-sm font-medium cursor-pointer text-ellipsis appearance-none"
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="amount_high">High to Low</option>
-                  <option value="amount_low">Low to High</option>
-                </select>
-                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" size={14} />
-              </div>
-            </div>
-          </div>
-        </div>
+          <CustomDropdown 
+            value={sortBy} 
+            onChange={(val) => { setSortBy(val); setCurrentPage(1); }} 
+            options={[
+              { value: 'newest', label: 'Newest First' },
+              { value: 'oldest', label: 'Oldest First' },
+              { value: 'amount_high', label: 'High to Low' },
+              { value: 'amount_low', label: 'Low to High' }
+            ]} 
+            className="min-w-[150px]" 
+          />
       </div>
 
-      <div className="space-y-4 print:hidden">
+      {/* Orders List */}
+      <div className="flex flex-col gap-4">
         {fetchError ? (
-          <div className="text-center py-12 text-brand-berry bg-brand-berry/10 rounded-xl border border-brand-berry/20">
-            <h3 className="font-bold text-lg">Error loading orders</h3>
-            <p className="font-mono text-sm mt-2">{fetchError}</p>
+          <div className="text-center py-12 text-red-600 bg-red-50 rounded-xl border border-red-200">
+            <h3 className="font-[700] text-[18px]">Error loading orders</h3>
+            <p className="font-mono text-[14px] mt-2">{fetchError}</p>
           </div>
         ) : loading ? (
-          <div className="text-center py-12 text-text-secondary">Loading orders...</div>
-        ) : filteredOrders.length === 0 ? (
-          <div className="text-center py-12 text-text-secondary">No orders found matching your criteria.</div>
+          <div className="text-center py-12 text-gray-500 text-[14px]">Loading orders...</div>
+        ) : paginatedOrders.length === 0 ? (
+          <div className="text-center py-12 text-gray-500 text-[14px]">No orders found matching your criteria.</div>
         ) : (
-          filteredOrders.map((order) => (
-            <motion.div
-              key={order.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative"
-              style={{ zIndex: openDropdownId === order.id ? 50 : 1 }}
-            >
-              <GlassCard hover className="p-0">
-                <div className="p-5">
-                  <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
-                  
-                  {/* Order Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-brand-caramel font-mono text-sm">#{order.id.slice(0, 8).toUpperCase()}</span>
-                      <span className="text-text-secondary text-sm">{new Date(order.created_at).toLocaleString()}</span>
-                    </div>
-                    <h3 className="text-lg font-bold text-text-primary">{order.profiles?.shop_name || 'Unknown Shop'}</h3>
-                    <p className="text-text-secondary text-sm mb-3">
-                      {order.profiles?.owner_name} • {order.profiles?.phone}
-                    </p>
-                    
-                    {/* Items Preview */}
-                    <p className="text-sm text-text-secondary mt-3 line-clamp-2 leading-relaxed">
-                      <span className="font-medium text-text-primary">Items: </span>
-                      {order.order_items?.slice(0, 3).map(item => `${item.quantity}x ${item.products?.name}`).join(', ')}
-                      {order.order_items?.length > 3 && ` + ${order.order_items.length - 3} more`}
-                    </p>
-                  </div>
+          paginatedOrders.map((order) => (
+            <div key={order.id} className="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-gray-200 p-6 transition-all duration-300 relative overflow-hidden hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:-translate-y-[2px]">
 
-                  {/* Pricing and Actions */}
-                  <div className="flex flex-col w-full lg:w-auto gap-4 mt-2 lg:mt-0 pt-4 lg:pt-0 border-t border-border-light/50 lg:border-t-0">
-                    <div className="flex flex-row justify-between items-center gap-4 w-full">
-                      <div className="text-left">
-                        <p className="text-[11px] uppercase tracking-wider font-semibold text-text-muted mb-0.5">Total Amount</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xl font-bold text-brand-caramel">₹{order.total_amount}</p>
-                          <span className={`text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${
-                            order.payment_method === 'cod' ? 'bg-brand-pistachio/10 text-brand-pistachio border-brand-pistachio/20' :
-                            order.payment_method === 'upi' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                            'bg-text-secondary/10 text-text-secondary border-border-light'
-                          }`}>
-                            {order.payment_method === 'cod' ? 'COD' : order.payment_method === 'upi' ? 'UPI' : 'Pay Later'}
-                          </span>
+                <div className="flex flex-col md:flex-row justify-between items-start mb-4 gap-4">
+                    <div>
+                        <div className="flex items-center gap-3 mb-3">
+                            <span className="text-[14px] font-[700] text-red-600">#{order.id.slice(0, 8).toUpperCase()}</span>
+                            <span className="text-[13px] text-gray-500">{new Date(order.created_at).toLocaleString()}</span>
                         </div>
-                      </div>
-                      
-                      <Button 
-                        variant="secondary" 
-                        className="py-1.5 px-4 text-sm whitespace-nowrap bg-bg-tertiary hover:bg-bg-secondary"
-                        onClick={() => setSelectedInvoice(order)}
-                      >
-                        View Details
-                      </Button>
+                        <div className="mb-4">
+                            <div className="text-[18px] font-[700] text-gray-800 mb-1">{order.profiles?.shop_name || 'Unknown Shop'}</div>
+                            <div className="text-[13px] text-gray-500 mb-2">
+                                <User size={12} className="inline text-red-600 mr-1" /> {order.profiles?.owner_name || 'No Owner Name'} &bull; {order.profiles?.phone || 'No Phone'}
+                            </div>
+                            <div className="text-[14px] text-gray-800 font-[500] mt-3">
+                                Items: <span className="text-gray-500 font-[400] leading-relaxed">
+                                  {order.order_items?.slice(0, 3).map(item => `${item.quantity}x ${item.products?.name}`).join(', ')}
+                                  {order.order_items?.length > 3 && ` + ${order.order_items.length - 3} more`}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                  </div>
 
-                  </div>
-
-                  {/* Order Status Path */}
-                  <OrderStatusPath 
-                    order={order} 
-                    onUpdateStatus={(newStatus) => updateOrderStatus(order.id, newStatus)} 
-                  />
+                    <div className="text-left md:text-right w-full md:w-auto flex flex-col md:items-end">
+                        <div className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Total Amount</div>
+                        <div className="text-[22px] font-[800] text-red-600 leading-none mb-3">₹{order.total_amount}</div>
+                        
+                        <div className="flex items-center gap-2">
+                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-[700] ${
+                                order.payment_method === 'cod' ? 'bg-emerald-100 text-emerald-700' :
+                                order.payment_method === 'upi' ? 'bg-blue-100 text-blue-700' :
+                                'bg-amber-100 text-amber-700'
+                            }`}>
+                               {order.payment_method === 'cod' ? <><Banknote size={14}/> COD</> : order.payment_method === 'upi' ? <><CreditCard size={14}/> UPI</> : <><Clock size={14}/> Pay Later</>}
+                            </div>
+                            
+                            <button onClick={() => setSelectedInvoice(order)} className="px-4 py-1.5 border border-gray-200 rounded-lg bg-white text-red-600 text-[13px] font-[600] cursor-pointer transition-all hover:bg-red-50 hover:border-red-600 whitespace-nowrap">
+                                View Details
+                            </button>
+                        </div>
+                    </div>
                 </div>
-              </GlassCard>
-            </motion.div>
+
+                {/* Progress Bar & Status Updater */}
+                <OrderStatusPath order={order} onUpdateStatus={(newStatus) => updateOrderStatus(order.id, newStatus)} />
+            </div>
           ))
         )}
       </div>
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-8 mb-4">
+          <button 
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          
+          {Array.from({ length: totalPages }).map((_, idx) => (
+            <button
+              key={idx + 1}
+              onClick={() => setCurrentPage(idx + 1)}
+              className={`w-9 h-9 rounded-full text-[14px] font-[600] flex items-center justify-center transition-all ${
+                currentPage === idx + 1 
+                  ? 'bg-red-600 text-white shadow-[0_4px_12px_rgba(220,38,38,0.3)]' 
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              {idx + 1}
+            </button>
+          ))}
+
+          <button 
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      )}
 
       {selectedInvoice && (
         <InvoiceModal 

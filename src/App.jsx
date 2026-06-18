@@ -6,12 +6,24 @@ import { useAuthStore } from './store/useAuthStore';
 import AuthLayout from './layouts/AuthLayout';
 import CompanyLayout from './layouts/CompanyLayout';
 import CustomerLayout from './layouts/CustomerLayout';
+import SuperAdminLayout from './layouts/SuperAdminLayout';
 
 // Auth Pages
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import CompanyRegister from './pages/Auth/CompanyRegister';
 import ResetPassword from './pages/Auth/ResetPassword';
+
+// Super Admin Pages
+import SuperAdminDashboard from './pages/SuperAdmin/Dashboard';
+import SuperAdminCompanies from './pages/SuperAdmin/Companies';
+import SuperAdminCustomers from './pages/SuperAdmin/Customers';
+import SuperAdminOrders from './pages/SuperAdmin/Orders';
+import SuperAdminInvoices from './pages/SuperAdmin/Invoices';
+import SuperAdminAnalytics from './pages/SuperAdmin/Analytics';
+import SuperAdminAuditTrail from './pages/SuperAdmin/AuditTrail';
+import SuperAdminOrderDetail from './pages/SuperAdmin/OrderDetail';
+import SuperAdminSettings from './pages/SuperAdmin/Settings';
 
 // Company Pages
 import CompanyDashboard from './pages/Company/Dashboard';
@@ -47,6 +59,7 @@ const ProtectedRoute = ({ children, allowedRole }) => {
   }
 
   if (profile && profile.role !== allowedRole) {
+    if (profile.role === 'super_admin') return <Navigate to="/admin" replace />;
     return <Navigate to={profile.role === 'company' ? '/company' : '/customer'} replace />;
   }
 
@@ -69,6 +82,23 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/register/company" element={<CompanyRegister />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+        </Route>
+
+        {/* Super Admin Routes */}
+        <Route path="/admin" element={
+          <ProtectedRoute allowedRole="super_admin">
+            <SuperAdminLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<SuperAdminDashboard />} />
+          <Route path="companies" element={<SuperAdminCompanies />} />
+          <Route path="customers" element={<SuperAdminCustomers />} />
+          <Route path="orders" element={<SuperAdminOrders />} />
+          <Route path="orders/:id" element={<SuperAdminOrderDetail />} />
+          <Route path="invoices" element={<SuperAdminInvoices />} />
+          <Route path="analytics" element={<SuperAdminAnalytics />} />
+          <Route path="audit-logs" element={<SuperAdminAuditTrail />} />
+          <Route path="settings" element={<SuperAdminSettings />} />
         </Route>
 
         {/* Company Routes */}

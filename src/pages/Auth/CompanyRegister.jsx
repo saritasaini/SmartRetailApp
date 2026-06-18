@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
-import { Mail, Lock, Store, User, Phone, Loader2, AlertCircle, MapPin, Briefcase, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Store, User, Phone, Loader2, AlertCircle, MapPin, Briefcase, Eye, EyeOff, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '../../lib/supabase';
 
 export default function CompanyRegister() {
   const [formData, setFormData] = useState({
@@ -17,6 +18,20 @@ export default function CompanyRegister() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   
   const signUp = useAuthStore(state => state.signUp);
   const navigate = useNavigate();
@@ -32,7 +47,32 @@ export default function CompanyRegister() {
     
     try {
       const { email, password, ...metadata } = formData;
-      await signUp(email, password, { ...metadata, role: 'company' });
+      const authData = await signUp(email, password, { ...metadata, role: 'company' });
+      
+      if (logoFile && authData?.user?.id) {
+        try {
+          const fileExt = logoFile.name.split('.').pop();
+          const fileName = `${authData.user.id}-${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('company-logos')
+            .upload(fileName, logoFile);
+            
+          if (!uploadError) {
+            const { data: publicUrlData } = supabase.storage
+              .from('company-logos')
+              .getPublicUrl(fileName);
+              
+            await supabase
+              .from('profiles')
+              .update({ logo_url: publicUrlData.publicUrl })
+              .eq('id', authData.user.id);
+          }
+        } catch (imgErr) {
+          console.warn("Logo upload failed:", imgErr);
+        }
+      }
+
       setSuccess(true);
     } catch (err) {
       setError(err.message || 'Failed to register company account');
@@ -82,6 +122,32 @@ export default function CompanyRegister() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-[#6B4226] mb-1">Company Logo</label>
+          <div className="relative flex items-center gap-4">
+              <div className="flex-1">
+                  <input 
+                      id="logo-upload" 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleLogoChange} 
+                  />
+                  <label htmlFor="logo-upload" className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-2 border-dashed border-border-light hover:border-brand-caramel hover:bg-brand-caramel/5 cursor-pointer transition-all text-sm font-medium text-text-secondary">
+                      <div className="w-8 h-8 rounded-md bg-brand-caramel/10 text-brand-caramel flex items-center justify-center shrink-0">
+                          <Upload size={16} />
+                      </div>
+                      <span className="truncate">{logoFile ? logoFile.name : 'Upload logo file...'}</span>
+                  </label>
+              </div>
+              {logoPreview && (
+                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-border-light shadow-sm shrink-0 bg-bg-secondary">
+                      <img src={logoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+              )}
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-[#6B4226] mb-1">Company / Shop Name</label>
           <div className="relative">

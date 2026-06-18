@@ -19,9 +19,9 @@ export default function CompanyLayout() {
   const profile = useAuthStore(state => state.profile);
 
   useEffect(() => {
-    document.title = profile?.shop_name || 'SmartRetails';
+    document.title = profile?.shop_name || 'Mahadev - Company Panel';
     return () => {
-      document.title = 'SmartRetails';
+      document.title = 'Mahadev';
     };
   }, [profile?.shop_name]);
 
@@ -41,69 +41,80 @@ export default function CompanyLayout() {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-bg-primary pb-24 lg:pb-0">
+    <div className="flex h-screen overflow-hidden bg-gray-50 text-gray-800" style={{ fontFamily: 'Inter, sans-serif' }}>
+      
       {/* Desktop Sidebar (hidden on mobile) */}
-      <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 z-50 w-56 glass-card rounded-none border-t-0 border-b-0 border-l-0">
-        <div className="p-5">
-          <h1 className="text-lg font-bold text-gradient truncate" title={profile?.shop_name || 'Company Panel'}>
-            {profile?.shop_name || 'Company Panel'}
+      <aside className="w-64 bg-white shadow-xl z-20 hidden lg:flex flex-col slide-in-left fixed inset-y-0 left-0" style={{ animationDelay: '0.1s' }}>
+        <div className="p-6 border-b border-gray-100">
+          <h1 className="text-xl font-bold text-red-600" title={profile?.shop_name || 'Mahadev'}>
+            {profile?.shop_name || 'Mahadev'}
           </h1>
+          <p className="text-xs text-gray-400 mt-1">Company Panel</p>
         </div>
 
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto mt-2">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+            
             return (
               <Link
                 key={item.name}
                 to={item.path}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 ${isActive
-                    ? 'bg-brand-caramel/10 text-brand-caramel border border-brand-caramel/20 shadow-[0_0_15px_rgba(220,38,38,0.1)]'
-                    : 'text-text-secondary hover:bg-bg-primary hover:text-text-primary'
-                  }`}
+                className={`sidebar-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-colors ${
+                  isActive
+                    ? 'active'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-red-600 font-medium'
+                }`}
               >
-                <Icon size={18} className={isActive ? 'text-brand-caramel' : ''} />
-                <span className="font-medium text-sm">{item.name}</span>
+                <div className="w-5 text-center flex items-center justify-center">
+                  <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                </div>
+                {item.name}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-3 border-t border-border-light">
+        <div className="p-4 border-t border-gray-100 mt-auto">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-2 w-full rounded-lg text-text-secondary hover:bg-brand-caramel/10 hover:text-brand-caramel transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 text-sm font-medium transition-colors"
           >
-            <LogOut size={18} />
-            <span className="font-medium text-sm">Logout</span>
+            <div className="w-5 text-center flex items-center justify-center">
+               <LogOut size={18} strokeWidth={2} />
+            </div>
+            Logout
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-56 pb-16 lg:pb-0">
+      <main className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-64 pb-16 lg:pb-0">
         {/* Mobile Header */}
-        <header className="lg:hidden glass-card rounded-none border-x-0 border-t-0 p-4 flex items-center justify-between sticky top-0 z-30">
-          <h1 className="text-lg font-bold text-gradient truncate flex-1 pr-2" title={profile?.shop_name || 'Company Panel'}>
-            {profile?.shop_name || 'Company Panel'}
-          </h1>
+        <header className="lg:hidden bg-white/80 backdrop-blur-xl border-b border-gray-100 p-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+          <div>
+            <h1 className="text-lg font-bold text-red-600 tracking-tight" title={profile?.shop_name || 'Mahadev'}>
+              {profile?.shop_name || 'Mahadev'}
+            </h1>
+            <p className="text-[11px] font-medium text-gray-400">Company Panel</p>
+          </div>
           <button
             onClick={handleLogout}
-            className="p-2 text-text-secondary hover:text-brand-caramel rounded-lg hover:bg-brand-caramel/10 transition-colors"
+            className="p-2 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
           >
             <LogOut size={20} />
           </button>
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <div className="flex-1 overflow-y-auto">
           <Outlet />
         </div>
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 glass-card rounded-none border-x-0 border-b-0 px-0 py-2 flex overflow-x-auto overflow-y-hidden scrollbar-hide snap-x z-40 safe-area-bottom">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 py-2 flex overflow-x-auto overflow-y-hidden scrollbar-hide snap-x z-40 safe-area-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
@@ -111,13 +122,17 @@ export default function CompanyLayout() {
             <Link
               key={item.name}
               to={item.path}
-              className={`flex-shrink-0 w-[20%] flex flex-col items-center gap-1 snap-start ${isActive ? 'text-brand-caramel' : 'text-text-secondary'
-                }`}
+              className={`flex-shrink-0 w-[20%] flex flex-col items-center justify-center gap-1.5 snap-start p-2 rounded-xl transition-colors ${
+                isActive ? 'text-red-600' : 'text-gray-500 hover:bg-gray-50'
+              }`}
             >
-              <div className={`p-1 rounded-lg transition-all duration-200 ${isActive ? 'bg-brand-caramel/10' : ''}`}>
-                <Icon size={22} />
+              <div className="relative">
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                {isActive && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-600 border border-white"></span>
+                )}
               </div>
-              <span className="text-[10px] font-medium leading-none">{item.name}</span>
+              <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-medium'}`}>{item.name}</span>
             </Link>
           );
         })}
