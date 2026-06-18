@@ -45,11 +45,16 @@ export default function CompanyLayout() {
       
       {/* Desktop Sidebar (hidden on mobile) */}
       <aside className="w-64 bg-white shadow-xl z-20 hidden lg:flex flex-col slide-in-left fixed inset-y-0 left-0" style={{ animationDelay: '0.1s' }}>
-        <div className="p-6 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-red-600" title={profile?.shop_name || 'Mahadev'}>
-            {profile?.shop_name || 'Mahadev'}
-          </h1>
-          <p className="text-xs text-gray-400 mt-1">Company Panel</p>
+        <div className="p-6 border-b border-gray-100 flex items-center gap-3">
+          {profile?.logo_url && (
+            <img src={profile.logo_url} alt="Logo" className="w-12 h-12 rounded-xl object-cover shadow-sm border border-gray-100 shrink-0 bg-white" />
+          )}
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-red-600 truncate" title={profile?.shop_name || 'Mahadev'}>
+              {profile?.shop_name || 'Mahadev'}
+            </h1>
+            <p className="text-xs text-gray-400 mt-0.5">Company Panel</p>
+          </div>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
@@ -93,11 +98,16 @@ export default function CompanyLayout() {
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-64 pb-16 lg:pb-0">
         {/* Mobile Header */}
         <header className="lg:hidden bg-white/80 backdrop-blur-xl border-b border-gray-100 p-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-          <div>
-            <h1 className="text-lg font-bold text-red-600 tracking-tight" title={profile?.shop_name || 'Mahadev'}>
-              {profile?.shop_name || 'Mahadev'}
-            </h1>
-            <p className="text-[11px] font-medium text-gray-400">Company Panel</p>
+          <div className="flex items-center gap-3">
+            {profile?.logo_url && (
+              <img src={profile.logo_url} alt="Logo" className="w-10 h-10 rounded-xl object-cover shadow-sm border border-gray-100 shrink-0 bg-white" />
+            )}
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold text-red-600 tracking-tight truncate max-w-[200px]" title={profile?.shop_name || 'Mahadev'}>
+                {profile?.shop_name || 'Mahadev'}
+              </h1>
+              <p className="text-[11px] font-medium text-gray-400">Company Panel</p>
+            </div>
           </div>
           <button
             onClick={handleLogout}
