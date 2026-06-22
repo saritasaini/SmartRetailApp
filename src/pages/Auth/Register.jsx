@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Mail, Lock, Store, User, Phone, Loader2, AlertCircle, MapPin, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '../../lib/supabase';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -37,7 +38,12 @@ export default function Register() {
         throw new Error('Invalid registration link. A company ID is required.');
       }
       const { email, password, ...metadata } = formData;
-      await signUp(email, password, { ...metadata, company_id: companyId, role: 'customer' });
+      const authData = await signUp(email, password, { ...metadata, company_id: companyId, role: 'customer' });
+      
+      if (authData?.user?.id) {
+        await supabase.from('profiles').update({ email: email }).eq('id', authData.user.id);
+      }
+      
       setSuccess(true);
       // Let the user click a button or just read the message, we won't navigate immediately.
     } catch (err) {

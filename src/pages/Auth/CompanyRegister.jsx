@@ -49,6 +49,11 @@ export default function CompanyRegister() {
       const { email, password, ...metadata } = formData;
       const authData = await signUp(email, password, { ...metadata, role: 'company' });
       
+      if (authData?.user?.id) {
+        // Ensure email is also saved to the profile
+        await supabase.from('profiles').update({ email: email }).eq('id', authData.user.id);
+      }
+
       if (logoFile && authData?.user?.id) {
         try {
           const fileExt = logoFile.name.split('.').pop();

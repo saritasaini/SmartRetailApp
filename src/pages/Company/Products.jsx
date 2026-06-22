@@ -6,6 +6,7 @@ import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
 import { Package, Plus, Edit2, Trash2, X, Check, Search, Image as ImageIcon, Upload, Filter, AlertCircle, ShoppingBag, FolderTree, ChevronDown, ChevronLeft, ChevronRight, ToggleRight, Ban, AlertTriangle, Pen, Trash, SlidersHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { logCompanyAction } from '../../lib/logger';
 
 export default function ProductManagement() {
   const [products, setProducts] = useState([]);
@@ -172,9 +173,23 @@ export default function ProductManagement() {
 
       if (editingProduct) {
         await supabase.from('products').update(payload).eq('id', editingProduct.id);
+        await logCompanyAction({
+          companyId: useAuthStore.getState().user.id,
+          action: 'Product Updated',
+          details: `Updated product "${payload.name}".`,
+          userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
+          type: 'info'
+        });
       } else {
         payload.company_id = useAuthStore.getState().user.id;
         await supabase.from('products').insert([payload]);
+        await logCompanyAction({
+          companyId: payload.company_id,
+          action: 'Product Added',
+          details: `Added new product "${payload.name}".`,
+          userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
+          type: 'success'
+        });
       }
 
       setIsModalOpen(false);
@@ -252,6 +267,18 @@ export default function ProductManagement() {
   const toggleStatus = async (id, currentStatus) => {
     try {
       await supabase.from('products').update({ is_active: !currentStatus }).eq('id', id);
+      
+      const product = products.find(p => p.id === id);
+      if (product) {
+        await logCompanyAction({
+          companyId: useAuthStore.getState().user.id,
+          action: 'Product Status Changed',
+          details: `Product "${product.name}" was marked as ${!currentStatus ? 'Active' : 'Inactive'}.`,
+          userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
+          type: !currentStatus ? 'success' : 'warning'
+        });
+      }
+
       fetchData();
     } catch (error) {
       console.error('Error updating status:', error);
@@ -261,7 +288,19 @@ export default function ProductManagement() {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       try {
+        const product = products.find(p => p.id === id);
         await supabase.from('products').delete().eq('id', id);
+
+        if (product) {
+          await logCompanyAction({
+            companyId: useAuthStore.getState().user.id,
+            action: 'Product Deleted',
+            details: `Deleted product "${product.name}".`,
+            userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
+            type: 'error'
+          });
+        }
+
         fetchData();
         if (viewingProduct?.id === id) setViewingProduct(null);
       } catch (error) {

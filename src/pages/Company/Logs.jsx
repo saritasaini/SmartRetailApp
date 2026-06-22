@@ -3,14 +3,8 @@ import GlassCard from '../../components/ui/GlassCard';
 import { Activity, Clock, Filter, Search, ChevronDown, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Mock logs data
-const MOCK_LOGS = [
-  { id: 1, action: 'Order Verified', details: 'Order #ORD-7829 was marked as verified.', user: 'Admin', type: 'success', timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
-  { id: 2, action: 'Payment Logged', details: 'Manual cash payment of ₹1,500 received from Sweet Shop.', user: 'Rohan', type: 'info', timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString() },
-  { id: 3, action: 'Product Deactivated', details: 'Kaju Katli (500g) was marked as inactive.', user: 'Admin', type: 'warning', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString() },
-  { id: 4, action: 'Member Added', details: 'New member "Rahul Sharma" was invited as Staff.', user: 'Admin', type: 'info', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
-  { id: 5, action: 'Low Stock Alert', details: 'Milk Cake stock dropped below 10 units.', user: 'System', type: 'warning', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString() },
-];
+import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function CompanyLogs() {
   const [logs, setLogs] = useState([]);
@@ -20,21 +14,43 @@ export default function CompanyLogs() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
-    // Simulate fetching logs
     const fetchLogs = async () => {
       setLoading(true);
-      setTimeout(() => {
-        setLogs(MOCK_LOGS);
+      try {
+        const user = useAuthStore.getState().user;
+        const { data, error } = await supabase
+          .from('system_logs')
+          .select('*')
+          .eq('company_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        if (data) setLogs(data);
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+      } finally {
         setLoading(false);
-      }, 800);
+      }
     };
+
     fetchLogs();
+
+    // Set up Realtime subscription
+    const channel = supabase.channel('public:system_logs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'system_logs' }, payload => {
+        fetchLogs();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch = log.action.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          log.user.toLowerCase().includes(searchTerm.toLowerCase());
+                          log.user_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || log.type === typeFilter;
     return matchesSearch && matchesType;
   });
@@ -138,12 +154,12 @@ export default function CompanyLogs() {
                     <h4 className="text-sm font-bold text-text-primary truncate">{log.action}</h4>
                     <span className="text-xs text-text-secondary flex items-center gap-1 shrink-0">
                       <Clock size={12} />
-                      {new Date(log.timestamp).toLocaleString()}
+                      {new Date(log.created_at).toLocaleString()}
                     </span>
                   </div>
                   <p className="text-sm text-text-secondary mb-2">{log.details}</p>
                   <p className="text-xs font-medium text-text-muted">
-                    User: <span className="text-text-primary">{log.user}</span>
+                    User: <span className="text-text-primary">{log.user_name}</span>
                   </p>
                 </div>
               </div>

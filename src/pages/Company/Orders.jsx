@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Search, ChevronDown, Check, Clock, Truck, Package, ClipboardCheck, ChevronRight, User, CreditCard, Banknote, ChevronLeft } from 'lucide-react';
 import InvoiceModal from '../../components/ui/InvoiceModal';
+import { logCompanyAction } from '../../lib/logger';
 
 function OrderStatusPath({ order, onUpdateStatus }) {
   const stages = [
@@ -232,6 +233,15 @@ export default function OrderManagement() {
       if (!data || data.length === 0) {
         throw new Error("Aapke paas orders update karne ki permission nahi hai. Please SQL Editor me 'FOR ALL' wali policy run karein.");
       }
+
+      // Log the action
+      await logCompanyAction({
+        companyId: useAuthStore.getState().user.id,
+        action: `Order ${newStatus.replace('_', ' ')}`,
+        details: `Order #${orderId.slice(0, 8).toUpperCase()} status changed to ${newStatus.replace('_', ' ')}.`,
+        userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
+        type: newStatus === 'delivered' ? 'success' : newStatus === 'cancelled' ? 'error' : 'info'
+      });
       
     } catch (error) {
       console.error('Error updating order status:', error);

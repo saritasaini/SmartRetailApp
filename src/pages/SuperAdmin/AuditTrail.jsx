@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 // Counter component for animation
 const AnimatedCounter = ({ target, prefix = '', suffix = '' }) => {
@@ -63,92 +64,82 @@ export default function SuperAdminAuditTrail() {
 
   const filters = ['All Activities', 'Orders', 'Companies', 'Customers', 'Invoices'];
 
-  const auditLogs = [
-    {
-      id: 1,
-      type: 'ORDER',
-      time: '10:30 AM',
-      date: 'Today - June 16, 2026',
-      rawDate: '2026-06-16',
-      title: 'Order #ORD-001 marked as delivered',
-      link: '/admin/orders',
-      desc: 'Customer: Rajesh Sahu | Amount: ₹1,200 | Company: Saras Parler',
-      color: 'emerald',
-      icon: 'fas fa-check',
-      userInitials: 'RS',
-      userColor: 'amber'
-    },
-    {
-      id: 2,
-      type: 'ORDER',
-      time: '09:15 AM',
-      date: 'Today - June 16, 2026',
-      rawDate: '2026-06-16',
-      title: 'Order #ORD-003 status changed to shipped',
-      link: '/admin/orders',
-      desc: 'Customer: Sarita Saini | Amount: ₹2,450 | Company: Mahadev',
-      color: 'blue',
-      icon: 'fas fa-shipping-fast',
-      userInitials: 'SS',
-      userColor: 'purple'
-    },
-    {
-      id: 3,
-      type: 'CUSTOMER',
-      time: '08:45 AM',
-      date: 'Today - June 16, 2026',
-      rawDate: '2026-06-16',
-      title: 'New customer registered: Rajesh Sahu',
-      link: '/admin/customers',
-      desc: 'Phone: 9314305342 | Company: Saras Parler',
-      color: 'red',
-      icon: 'fas fa-user-plus',
-      userInitials: 'RS',
-      userColor: 'amber'
-    },
-    {
-      id: 4,
-      type: 'INVOICE',
-      time: '04:20 PM',
-      date: 'Yesterday - June 15, 2026',
-      rawDate: '2026-06-15',
-      title: 'Invoice #INV-004 generated for Amul',
-      link: '/admin/invoices',
-      desc: 'Amount: ₹890 | Due Date: June 29, 2026',
-      color: 'purple',
-      icon: 'fas fa-file-invoice',
-      userInitials: 'AK',
-      userColor: 'blue'
-    },
-    {
-      id: 5,
-      type: 'COMPANY',
-      time: '11:00 AM',
-      date: 'Yesterday - June 15, 2026',
-      rawDate: '2026-06-15',
-      title: 'Company profile updated: Saras Parler',
-      link: '/admin/companies',
-      desc: 'Contact info modified by Admin User',
-      color: 'pink',
-      icon: 'fas fa-building',
-      userInitials: 'AU',
-      userColor: 'red'
-    },
-    {
-      id: 6,
-      type: 'SYSTEM',
-      time: '09:30 AM',
-      date: 'Yesterday - June 15, 2026',
-      rawDate: '2026-06-15',
-      title: 'Login attempt from new device detected',
-      link: '/admin/audit-logs',
-      desc: 'IP: 192.168.1.105 | Location: Mumbai, India',
-      color: 'amber',
-      icon: 'fas fa-exclamation-triangle',
-      userInitials: 'AU',
-      userColor: 'red'
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLogs();
+
+    // Subscribe to new logs
+    const channel = supabase
+      .channel('public:super_admin_logs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'super_admin_logs' }, () => {
+        fetchLogs();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('super_admin_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const formattedLogs = data.map(log => {
+          const dt = new Date(log.created_at);
+          
+          // Formatter for time: e.g., "10:30 AM"
+          const time = dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          
+          // Formatter for date: e.g., "June 16, 2026"
+          const dateStr = dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          
+          // Check if today or yesterday
+          const today = new Date();
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          
+          let dayPrefix = '';
+          if (dt.toDateString() === today.toDateString()) {
+            dayPrefix = 'Today - ';
+          } else if (dt.toDateString() === yesterday.toDateString()) {
+            dayPrefix = 'Yesterday - ';
+          }
+          
+          // Raw date for filtering: YYYY-MM-DD
+          const rawDate = dt.toISOString().split('T')[0];
+
+          return {
+            id: log.id,
+            type: log.type,
+            time: time,
+            date: dayPrefix + dateStr,
+            rawDate: rawDate,
+            title: log.title,
+            desc: log.desc,
+            color: log.color || 'blue',
+            icon: log.icon || 'fas fa-info-circle',
+            userInitials: log.user_initials || 'SA',
+            userColor: 'gray'
+          };
+        });
+        setAuditLogs(formattedLogs);
+      }
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const filteredLogs = auditLogs.filter(log => {
       let typeMatch = true;
@@ -246,7 +237,9 @@ export default function SuperAdminAuditTrail() {
         <div className="glass-card rounded-2xl p-8 shadow-sm border border-gray-100 bg-white fade-in" style={{ animationDelay: '0.6s' }}>
             <h3 className="text-lg font-bold text-gray-800 mb-6">Activity Timeline</h3>
             <div className="space-y-0 pl-2">
-                {Object.keys(groupedLogs).length === 0 ? (
+                {loading ? (
+                    <div className="py-8 text-center text-gray-500 font-medium"><i className="fas fa-spinner fa-spin mr-2"></i>Loading logs...</div>
+                ) : Object.keys(groupedLogs).length === 0 ? (
                     <div className="py-8 text-center text-gray-500 font-medium">No activity logs found for this filter.</div>
                 ) : (
                     Object.keys(groupedLogs).map((date, dateIndex) => (

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { motion, AnimatePresence } from 'framer-motion';
+import { logSuperAdminAction } from '../../lib/logger';
 
 // Animated Counter Component
 const AnimatedCounter = ({ target }) => {
@@ -130,6 +131,18 @@ export default function Companies() {
       setCompanies(companies.map(c => 
         c.id === id ? { ...c, is_approved: !currentStatus } : c
       ));
+
+      const company = companies.find(c => c.id === id);
+      if (company) {
+        await logSuperAdminAction({
+          type: 'COMPANY',
+          title: `Company ${!currentStatus ? 'Activated' : 'Deactivated'}`,
+          desc: `The company "${company.shop_name}" was ${!currentStatus ? 'activated' : 'deactivated'}.`,
+          userInitials: 'SA',
+          color: !currentStatus ? 'emerald' : 'amber',
+          icon: !currentStatus ? 'fas fa-check' : 'fas fa-ban'
+        });
+      }
     } catch (error) {
       console.error('Error toggling approval:', error);
       alert('Failed to update company status');
@@ -157,6 +170,19 @@ export default function Companies() {
       if (error) throw error;
       
       setCompanies(companies.filter(c => c.id !== id));
+      
+      const company = companies.find(c => c.id === id);
+      if (company) {
+        await logSuperAdminAction({
+          type: 'COMPANY',
+          title: 'Company Deleted',
+          desc: `The company "${company.shop_name}" was permanently deleted.`,
+          userInitials: 'SA',
+          color: 'red',
+          icon: 'fas fa-trash-alt'
+        });
+      }
+
       if (selectedCompany && selectedCompany.id === id) {
           setSelectedCompany(null);
       }
@@ -232,8 +258,17 @@ export default function Companies() {
 
         setIsAddModalOpen(false);
       }
-      
       setNewCompany({ email: '', password: '', shop_name: '', owner_name: '', phone: '', address: '' });
+      
+      await logSuperAdminAction({
+        type: 'COMPANY',
+        title: 'New Company Added',
+        desc: `Added new company "${newCompany.shop_name}".`,
+        userInitials: 'SA',
+        color: 'blue',
+        icon: 'fas fa-building'
+      });
+
       fetchCompanies();
     } catch (error) {
       console.error('Error adding company:', error);
@@ -305,10 +340,18 @@ export default function Companies() {
       setEditingCompany(null);
       fetchCompanies();
       
-      // Update details view if it's currently open
       if (selectedCompany && selectedCompany.id === editingCompany.id) {
         setSelectedCompany(prev => ({...prev, ...editingCompany, logo_url: updateData.logo_url || prev.logo_url}));
       }
+
+      await logSuperAdminAction({
+        type: 'COMPANY',
+        title: 'Company Details Updated',
+        desc: `Updated details for company "${editingCompany.shop_name}".`,
+        userInitials: 'SA',
+        color: 'purple',
+        icon: 'fas fa-edit'
+      });
     } catch (error) {
       console.error('Error updating company:', error);
       setErrorMsg(error.message);

@@ -7,6 +7,7 @@ import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
 import { Users, CheckCircle, XCircle, Search, MapPin, Phone, Store, BarChart2, LayoutGrid, List, UserPlus, Share2, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { logCompanyAction } from '../../lib/logger';
 
 export default function CustomerManagement() {
   const navigate = useNavigate();
@@ -69,6 +70,17 @@ export default function CustomerManagement() {
       setCustomers(customers.map(c => 
         c.id === id ? { ...c, is_approved: !currentStatus } : c
       ));
+
+      const customer = customers.find(c => c.id === id);
+      if (customer) {
+        await logCompanyAction({
+          companyId: useAuthStore.getState().user.id,
+          action: 'Customer Approval Changed',
+          details: `Retailer "${customer.shop_name}" access was ${!currentStatus ? 'Approved' : 'Revoked'}.`,
+          userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
+          type: !currentStatus ? 'success' : 'warning'
+        });
+      }
     } catch (error) {
       console.error('Error updating approval status:', error);
       setErrorMsg('Failed to update status');
@@ -120,6 +132,15 @@ export default function CustomerManagement() {
 
       setIsAddModalOpen(false);
       setNewCustomer({ email: '', password: '', shop_name: '', owner_name: '', phone: '', address: '' });
+      
+      await logCompanyAction({
+        companyId: useAuthStore.getState().user.id,
+        action: 'Customer Added',
+        details: `Added new retailer "${newCustomer.shop_name}".`,
+        userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
+        type: 'success'
+      });
+
       fetchCustomers();
     } catch (error) {
       console.error('Error adding customer:', error);
@@ -151,6 +172,14 @@ export default function CustomerManagement() {
 
       if (error) throw error;
 
+      await logCompanyAction({
+        companyId: useAuthStore.getState().user.id,
+        action: 'Customer Updated',
+        details: `Updated details for retailer "${editCustomer.shop_name}".`,
+        userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
+        type: 'info'
+      });
+
       setIsEditModalOpen(false);
       setEditCustomer(null);
       fetchCustomers();
@@ -177,6 +206,18 @@ export default function CustomerManagement() {
         }
         throw error;
       }
+
+      const customer = customers.find(c => c.id === id);
+      if (customer) {
+        await logCompanyAction({
+          companyId: useAuthStore.getState().user.id,
+          action: 'Customer Deleted',
+          details: `Deleted retailer "${customer.shop_name}".`,
+          userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
+          type: 'error'
+        });
+      }
+
       fetchCustomers();
     } catch (error) {
       console.error('Error deleting customer:', error);
