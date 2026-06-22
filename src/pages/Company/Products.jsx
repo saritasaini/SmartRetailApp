@@ -27,7 +27,7 @@ export default function ProductManagement() {
   const ITEMS_PER_PAGE = 20;
 
   // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(() => new URLSearchParams(location.search).get('action') === 'add_product');
   const [viewingProduct, setViewingProduct] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);

@@ -305,7 +305,7 @@ export default function CompanyDashboard() {
         </div>
         <div className="flex flex-wrap gap-2">
           {[
-            { to: '/company/products', bg: 'bg-red-500 hover:bg-red-600 shadow-red-200', Icon: Plus, label: 'Add Product' },
+            { to: '/company/products?action=add_product', bg: 'bg-red-500 hover:bg-red-600 shadow-red-200', Icon: Plus, label: 'Add Product' },
             { to: '/company/customers', bg: 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200', Icon: UserPlus, label: 'Approve Retailers' },
             { to: '/company/payments', bg: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200', Icon: FileText, label: 'Verify Payments' },
           ].map(({ to, bg, Icon, label }) => (
