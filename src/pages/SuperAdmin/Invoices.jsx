@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { supabase } from '../../lib/supabase';
 
 // Counter component for animation
 const AnimatedCounter = ({ target }) => {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (target === 0) {
+    let start = 0;
+    const end = Number(target) || 0;
+    if (end === 0) {
         setCount(0);
         return;
     }
-    let start = 0;
-    const end = parseInt(target, 10);
     const duration = 2500; // 2.5 seconds
     const increment = end / (duration / 16);
 
@@ -56,19 +57,95 @@ export default function SuperAdminInvoices() {
 
   const fetchInvoices = async () => {
       try {
-          // Temporarily removed dummy records. To be replaced with real API call later.
-          setInvoices([]);
-          setStats({
-              total: 0,
-              paid: 0,
-              pending: 0
+          setLoading(true);
+          const { data: orders, error } = await supabase
+              .from('orders')
+              .select(`
+                  id,
+                  created_at,
+                  total_amount,
+                  payment_status,
+                  company:company_id(shop_name, owner_name),
+                  customer:customer_id(shop_name, owner_name)
+              `)
+              .order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          const formattedInvoices = (orders || []).map((o, idx) => {
+              const date = new Date(o.created_at);
+              const dueDate = new Date(date);
+              dueDate.setDate(dueDate.getDate() + 15); // Net 15 terms
+              
+              const isOverdue = new Date() > dueDate && o.payment_status !== 'paid';
+              let status = isOverdue ? 'Overdue' : (o.payment_status === 'paid' ? 'Paid' : 'Pending');
+
+              // Visual config based on status
+              let statusBadge = '';
+              let statusDot = '';
+              let pulse = false;
+
+              if (status === 'Paid') {
+                  statusBadge = 'text-emerald-600 bg-emerald-50 border-emerald-100';
+                  statusDot = 'bg-emerald-500';
+              } else if (status === 'Pending') {
+                  statusBadge = 'text-amber-600 bg-amber-50 border-amber-100';
+                  statusDot = 'bg-amber-500';
+                  pulse = true;
+              } else if (status === 'Overdue') {
+                  statusBadge = 'text-red-600 bg-red-50 border-red-100';
+                  statusDot = 'bg-red-500';
+              }
+
+              const colors = [
+                  { customer: 'from-pink-100 to-pink-200 text-pink-600', company: 'from-pink-500 to-pink-600 text-white' },
+                  { customer: 'from-blue-100 to-blue-200 text-blue-600', company: 'from-blue-500 to-blue-600 text-white' },
+                  { customer: 'from-emerald-100 to-emerald-200 text-emerald-600', company: 'from-emerald-500 to-emerald-600 text-white' },
+                  { customer: 'from-purple-100 to-purple-200 text-purple-600', company: 'from-purple-500 to-purple-600 text-white' },
+              ];
+
+              const c = colors[idx % colors.length];
+
+              const customerName = o.customer?.shop_name || o.customer?.owner_name || 'N/A';
+              const companyName = o.company?.shop_name || o.company?.owner_name || 'N/A';
+
+              return {
+                  id: `INV-${o.id.slice(0, 6).toUpperCase()}`,
+                  realId: o.id,
+                  customerName: customerName,
+                  customerInitials: getInitials(customerName),
+                  companyName: companyName,
+                  companyInitials: getInitials(companyName),
+                  amount: Number(o.total_amount || 0),
+                  date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                  dueDate: dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                  status: status,
+                  statusBadge,
+                  statusDot,
+                  pulse,
+                  customerColor: c.customer,
+                  companyColor: c.company
+              };
           });
 
-          setLoading(false);
+          setInvoices(formattedInvoices);
+          
+          setStats({
+              total: formattedInvoices.length,
+              paid: formattedInvoices.filter(i => i.status === 'Paid').length,
+              pending: formattedInvoices.filter(i => i.status === 'Pending' || i.status === 'Overdue').length
+          });
+
       } catch (error) {
           console.error('Error fetching invoices:', error);
+      } finally {
           setLoading(false);
       }
+  };
+
+  const getInitials = (name) => {
+      if (!name) return 'NA';
+      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
   const filteredInvoices = invoices.filter(inv => {
@@ -105,16 +182,13 @@ export default function SuperAdminInvoices() {
                       <div className="icon-box w-14 h-14 rounded-2xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center text-red-600 text-2xl shadow-sm">
                           <i className="fas fa-file-invoice"></i>
                       </div>
-                      <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-                          <i className="fas fa-arrow-up text-xs"></i> 8%
-                      </span>
                   </div>
                   <h3 className="text-4xl font-bold text-gray-800 mb-1">
                       <AnimatedCounter target={stats.total} />
                   </h3>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Total Invoices</p>
                   <div className="mt-4 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-red-400 to-red-600 rounded-full" style={{ width: '75%' }}></div>
+                      <div className="h-full bg-gradient-to-r from-red-400 to-red-600 rounded-full" style={{ width: '100%' }}></div>
                   </div>
               </div>
 
@@ -125,16 +199,13 @@ export default function SuperAdminInvoices() {
                       <div className="icon-box w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center text-emerald-600 text-2xl shadow-sm">
                           <i className="fas fa-check-circle"></i>
                       </div>
-                      <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-                          <i className="fas fa-arrow-up text-xs"></i> 5%
-                      </span>
                   </div>
                   <h3 className="text-4xl font-bold text-gray-800 mb-1">
                       <AnimatedCounter target={stats.paid} />
                   </h3>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Paid</p>
                   <div className="mt-4 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full" style={{ width: '67%' }}></div>
+                      <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full" style={{ width: `${stats.total > 0 ? (stats.paid / stats.total) * 100 : 0}%` }}></div>
                   </div>
               </div>
 
@@ -145,16 +216,13 @@ export default function SuperAdminInvoices() {
                       <div className="icon-box w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center text-amber-600 text-2xl shadow-sm">
                           <i className="fas fa-clock"></i>
                       </div>
-                      <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">
-                          <i className="fas fa-exclamation text-xs"></i> 4
-                      </span>
                   </div>
                   <h3 className="text-4xl font-bold text-gray-800 mb-1">
                       <AnimatedCounter target={stats.pending} />
                   </h3>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Pending</p>
                   <div className="mt-4 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full" style={{ width: '33%' }}></div>
+                      <div className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full" style={{ width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%` }}></div>
                   </div>
               </div>
           </div>
@@ -200,9 +268,6 @@ export default function SuperAdminInvoices() {
                       )}
                   </div>
               </div>
-              <button className="add-btn flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-semibold shadow-lg shadow-red-500/30 whitespace-nowrap shrink-0 w-full lg:w-auto bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 transition-all">
-                  <i className="fas fa-plus"></i> Generate Invoice
-              </button>
           </div>
 
           {/* Invoices Table */}

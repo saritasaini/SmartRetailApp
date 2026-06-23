@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
+import { supabase } from '../../lib/supabase';
 
 // Animated Counter Component
 const AnimatedCounter = ({ target }) => {
@@ -16,13 +17,18 @@ const AnimatedCounter = ({ target }) => {
 
   useEffect(() => {
     let start = 0;
+    const end = Number(target) || 0;
+    if (end === 0) {
+      setCount(0);
+      return;
+    }
     const duration = 2500;
-    const increment = target / (duration / 16); // 60fps
+    const increment = end / (duration / 16); // 60fps
 
     const timer = setInterval(() => {
       start += increment;
-      if (start >= target) {
-        setCount(target);
+      if (start >= end) {
+        setCount(end);
         clearInterval(timer);
       } else {
         setCount(Math.floor(start));
@@ -36,16 +42,123 @@ const AnimatedCounter = ({ target }) => {
 };
 
 export default function Dashboard() {
-  
-  const dummyChartData = [
-    { name: 'Wed', sales: 350 },
-    { name: 'Thu', sales: 80 },
-    { name: 'Fri', sales: 20 },
-    { name: 'Sat', sales: 15 },
-    { name: 'Sun', sales: 25 },
-    { name: 'Mon', sales: 750 },
-    { name: 'Tue', sales: 200 }
-  ];
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    revenue: 0,
+    companies: 0,
+    customers: 0,
+    orders: 0
+  });
+  const [chartData, setChartData] = useState([]);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [companiesList, setCompaniesList] = useState([]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch Orders
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          customer:customer_id(shop_name, owner_name),
+          company:company_id(shop_name, owner_name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ordersError) throw ordersError;
+
+      // Fetch Profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, role, shop_name, owner_name, created_at')
+        .order('created_at', { ascending: false });
+
+      if (profilesError) throw profilesError;
+
+      // Calculate Stats
+      const allOrders = orders || [];
+      const deliveredOrders = allOrders.filter(o => o.status === 'delivered');
+      const revenue = deliveredOrders.reduce((acc, curr) => acc + Number(curr.total_amount || 0), 0);
+      
+      const allProfiles = profiles || [];
+      const companies = allProfiles.filter(p => p.role === 'company');
+      const customers = allProfiles.filter(p => p.role === 'customer');
+
+      setStats({
+        revenue,
+        companies: companies.length,
+        customers: customers.length,
+        orders: allOrders.length
+      });
+
+      // Recent Orders Table (Top 5)
+      setRecentOrders(allOrders.slice(0, 5));
+
+      // Companies initials for bubbles
+      setCompaniesList(companies.slice(0, 3));
+
+      // Chart Data (Last 7 days revenue)
+      const last7Days = [...Array(7)].map((_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        return d.toISOString().split('T')[0];
+      }).reverse();
+
+      const newChartData = last7Days.map(dateStr => {
+        const dayOrders = deliveredOrders.filter(o => o.created_at.startsWith(dateStr));
+        const daySales = dayOrders.reduce((acc, curr) => acc + Number(curr.total_amount || 0), 0);
+        return {
+          name: new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' }),
+          sales: daySales
+        };
+      });
+      setChartData(newChartData);
+
+      // Recent Activity (Combine latest orders and latest profiles)
+      const activities = [];
+      
+      allOrders.slice(0, 5).forEach(o => {
+        activities.push({
+          type: 'order',
+          title: `Order #${o.id.slice(0,8).toUpperCase()} ${o.status.replace('_', ' ')}`,
+          desc: `${o.company?.shop_name || o.company?.owner_name || 'Unknown'} - ₹${o.total_amount}`,
+          time: o.created_at,
+          icon: o.status === 'delivered' ? 'fas fa-check' : 'fas fa-bolt',
+          color: o.status === 'delivered' ? 'from-emerald-100 to-emerald-200 text-emerald-600 bg-emerald-100' : 'from-blue-100 to-blue-200 text-blue-600 bg-blue-100',
+          textColor: o.status === 'delivered' ? 'text-emerald-600' : 'text-blue-600',
+          bgColor: o.status === 'delivered' ? 'bg-emerald-100' : 'bg-blue-100'
+        });
+      });
+
+      allProfiles.slice(0, 5).forEach(p => {
+        activities.push({
+          type: 'profile',
+          title: `New ${p.role} registered`,
+          desc: `${p.shop_name || p.owner_name} joined`,
+          time: p.created_at,
+          icon: p.role === 'company' ? 'fas fa-building' : 'fas fa-user-plus',
+          color: p.role === 'company' ? 'from-purple-100 to-purple-200 text-purple-600 bg-purple-100' : 'from-red-100 to-red-200 text-red-600 bg-red-100',
+          textColor: p.role === 'company' ? 'text-purple-600' : 'text-red-600',
+          bgColor: p.role === 'company' ? 'bg-purple-100' : 'bg-red-100'
+        });
+      });
+
+      activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+      setRecentActivity(activities.slice(0, 5));
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleMouseMove = (e) => {
     const card = e.currentTarget;
@@ -77,6 +190,47 @@ export default function Dashboard() {
     return null;
   };
 
+  const getStatusColor = (status) => {
+      switch(status?.toLowerCase()) {
+          case 'delivered': return 'text-emerald-600 bg-emerald-50';
+          case 'processing': return 'text-amber-600 bg-amber-50';
+          case 'shipped': return 'text-red-600 bg-red-50';
+          case 'cancelled': return 'text-gray-600 bg-gray-50';
+          default: return 'text-blue-600 bg-blue-50';
+      }
+  };
+
+  const timeAgo = (dateStr) => {
+      if (!dateStr) return 'Just now';
+      const ms = new Date() - new Date(dateStr);
+      const minutes = Math.floor(ms / 60000);
+      if (minutes < 1) return 'Just now';
+      if (minutes < 60) return `${minutes} mins ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} hours ago`;
+      const days = Math.floor(hours / 24);
+      return `${days} days ago`;
+  };
+
+  const getInitials = (name) => {
+      if (!name) return 'NA';
+      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  const getRandomColor = (index) => {
+      const colors = ['bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-red-500', 'bg-emerald-500', 'bg-amber-500'];
+      return colors[index % colors.length];
+  };
+
+  if (loading) {
+      return (
+          <div className="flex flex-col justify-center items-center h-64 fade-in">
+              <i className="fas fa-circle-notch fa-spin text-4xl text-red-500 mb-4"></i>
+              <p className="text-gray-500 font-medium">Loading Dashboard Data...</p>
+          </div>
+      );
+  }
+
   return (
     <div className="space-y-8">
       
@@ -99,7 +253,7 @@ export default function Dashboard() {
                   </span>
               </div>
               <h3 className="text-3xl font-bold text-gray-800 mb-1 counter">
-                <AnimatedCounter target={1090} />
+                <AnimatedCounter target={stats.revenue} />
               </h3>
               <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Platform Revenue</p>
               <div className="mt-4 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -123,14 +277,16 @@ export default function Dashboard() {
                   </span>
               </div>
               <h3 className="text-3xl font-bold text-gray-800 mb-1 counter">
-                <AnimatedCounter target={3} />
+                <AnimatedCounter target={stats.companies} />
               </h3>
               <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Total Companies</p>
               <div className="mt-4 flex -space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold z-30">A</div>
-                  <div className="w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold z-20">B</div>
-                  <div className="w-8 h-8 rounded-full bg-pink-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold z-10">C</div>
-                  <div className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-gray-600 text-xs font-bold z-0">+0</div>
+                  {companiesList.map((comp, idx) => (
+                      <div key={comp.id} className={`w-8 h-8 rounded-full ${getRandomColor(idx)} border-2 border-white flex items-center justify-center text-white text-xs font-bold z-${30 - idx * 10}`}>{getInitials(comp.shop_name || comp.owner_name)}</div>
+                  ))}
+                  {stats.companies > 3 && (
+                      <div className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-gray-600 text-xs font-bold z-0">+{stats.companies - 3}</div>
+                  )}
               </div>
           </div>
 
@@ -150,7 +306,7 @@ export default function Dashboard() {
                   </span>
               </div>
               <h3 className="text-3xl font-bold text-gray-800 mb-1 counter">
-                <AnimatedCounter target={3} />
+                <AnimatedCounter target={stats.customers} />
               </h3>
               <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Total Customers</p>
               <div className="mt-4 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -174,7 +330,7 @@ export default function Dashboard() {
                   </span>
               </div>
               <h3 className="text-3xl font-bold text-gray-800 mb-1 counter">
-                <AnimatedCounter target={16} />
+                <AnimatedCounter target={stats.orders} />
               </h3>
               <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Total Orders</p>
               <div className="mt-4 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -201,7 +357,7 @@ export default function Dashboard() {
               </div>
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dummyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#dc2626" stopOpacity={0.2}/>
@@ -262,8 +418,8 @@ export default function Dashboard() {
                       </div>
 
                       <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
-                          <span>Last checked: 2 mins ago</span>
-                          <button className="text-red-400 hover:text-red-300 transition-colors">Refresh</button>
+                          <span>Last checked: Just now</span>
+                          <button className="text-red-400 hover:text-red-300 transition-colors" onClick={fetchDashboardData}>Refresh</button>
                       </div>
                   </div>
               </div>
@@ -277,41 +433,28 @@ export default function Dashboard() {
                           </div>
                           <h3 className="text-lg font-bold text-gray-800">Recent Activity</h3>
                       </div>
-                      <button className="text-xs font-semibold text-red-600 hover:text-red-700 transition-colors">View All</button>
+                      <Link to="/super-admin/audit" className="text-xs font-semibold text-red-600 hover:text-red-700 transition-colors">View All</Link>
                   </div>
                   
                   <div className="space-y-1">
-                      <div className="activity-item flex items-center gap-3 p-3 rounded-xl cursor-pointer">
-                          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                              <i className="fas fa-plus text-red-600 text-sm"></i>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-800 truncate">New order #1234 received</p>
-                              <p className="text-xs text-gray-500">2 minutes ago</p>
-                          </div>
-                          <span className="text-xs font-semibold text-red-600">₹1,200</span>
-                      </div>
-                      
-                      <div className="activity-item flex items-center gap-3 p-3 rounded-xl cursor-pointer">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                              <i className="fas fa-building text-blue-600 text-sm"></i>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-800 truncate">TechCorp registered</p>
-                              <p className="text-xs text-gray-500">1 hour ago</p>
-                          </div>
-                          <span className="text-xs font-semibold text-blue-600">New</span>
-                      </div>
-
-                      <div className="activity-item flex items-center gap-3 p-3 rounded-xl cursor-pointer">
-                          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                              <i className="fas fa-user-plus text-purple-600 text-sm"></i>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-800 truncate">New customer added</p>
-                              <p className="text-xs text-gray-500">3 hours ago</p>
-                          </div>
-                      </div>
+                      {recentActivity.length === 0 ? (
+                          <div className="p-4 text-center text-gray-500 text-sm">No recent activities</div>
+                      ) : (
+                          recentActivity.map((activity, i) => (
+                              <div key={i} className="activity-item flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50">
+                                  <div className={`w-10 h-10 rounded-full ${activity.bgColor} flex items-center justify-center flex-shrink-0`}>
+                                      <i className={`${activity.icon} ${activity.textColor} text-sm`}></i>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-800 truncate">{activity.title}</p>
+                                      <p className="text-xs text-gray-500">{timeAgo(activity.time)}</p>
+                                  </div>
+                                  <span className={`text-xs font-semibold ${activity.textColor}`}>
+                                      {activity.type === 'order' ? 'Order' : 'New'}
+                                  </span>
+                              </div>
+                          ))
+                      )}
                   </div>
               </div>
 
@@ -319,18 +462,18 @@ export default function Dashboard() {
               <div className="glass-card rounded-2xl p-6 shadow-sm border border-gray-100 fade-in" style={{ animationDelay: '0.9s' }}>
                   <h3 className="text-sm font-bold text-gray-800 mb-4 uppercase tracking-wider">Quick Actions</h3>
                   <div className="grid grid-cols-2 gap-3">
-                      <button className="flex flex-col items-center gap-2 p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors group">
+                      <Link to="/super-admin/companies" className="flex flex-col items-center gap-2 p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors group">
                           <i className="fas fa-plus-circle text-red-500 text-xl group-hover:scale-110 transition-transform"></i>
                           <span className="text-xs font-medium text-gray-700">Add Company</span>
-                      </button>
-                      <button className="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors group">
+                      </Link>
+                      <Link to="/super-admin/invoices" className="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors group">
                           <i className="fas fa-file-invoice text-blue-500 text-xl group-hover:scale-110 transition-transform"></i>
                           <span className="text-xs font-medium text-gray-700">New Invoice</span>
-                      </button>
-                      <button className="flex flex-col items-center gap-2 p-4 rounded-xl bg-purple-50 hover:bg-purple-100 transition-colors group">
+                      </Link>
+                      <Link to="/super-admin/customers" className="flex flex-col items-center gap-2 p-4 rounded-xl bg-purple-50 hover:bg-purple-100 transition-colors group">
                           <i className="fas fa-user-plus text-purple-500 text-xl group-hover:scale-110 transition-transform"></i>
                           <span className="text-xs font-medium text-gray-700">Add Customer</span>
-                      </button>
+                      </Link>
                       <button className="flex flex-col items-center gap-2 p-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-colors group">
                           <i className="fas fa-download text-emerald-500 text-xl group-hover:scale-110 transition-transform"></i>
                           <span className="text-xs font-medium text-gray-700">Export</span>
@@ -347,9 +490,9 @@ export default function Dashboard() {
                   <h3 className="text-lg font-bold text-gray-800">Recent Orders</h3>
                   <p className="text-sm text-gray-500 mt-1">Latest transactions across all companies</p>
               </div>
-              <button className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
+              <Link to="/super-admin/orders" className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
                   View All Orders
-              </button>
+              </Link>
           </div>
           
           <div className="overflow-x-auto">
@@ -366,66 +509,40 @@ export default function Dashboard() {
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                      <tr className="hover:bg-gray-50 transition-colors">
-                          <td className="py-4 px-4 text-sm font-medium text-gray-800">#ORD-001</td>
-                          <td className="py-4 px-4 text-sm text-gray-600">
-                              <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">T</div>
-                                  TechCorp
-                              </div>
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-600">Rahul Sharma</td>
-                          <td className="py-4 px-4 text-sm text-gray-500">Jun 15, 2026</td>
-                          <td className="py-4 px-4 text-sm font-bold text-gray-800">₹1,200</td>
-                          <td className="py-4 px-4">
-                              <span className="px-2.5 py-1 text-xs font-semibold text-emerald-600 bg-emerald-50 rounded-full">Delivered</span>
-                          </td>
-                          <td className="py-4 px-4">
-                              <button className="text-gray-400 hover:text-red-600 transition-colors">
-                                <i className="fas fa-ellipsis-h"></i>
-                              </button>
-                          </td>
-                      </tr>
-                      <tr className="hover:bg-gray-50 transition-colors">
-                          <td className="py-4 px-4 text-sm font-medium text-gray-800">#ORD-002</td>
-                          <td className="py-4 px-4 text-sm text-gray-600">
-                              <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded bg-purple-100 flex items-center justify-center text-purple-600 text-xs font-bold">R</div>
-                                  RetailMax
-                              </div>
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-600">Priya Patel</td>
-                          <td className="py-4 px-4 text-sm text-gray-500">Jun 14, 2026</td>
-                          <td className="py-4 px-4 text-sm font-bold text-gray-800">₹890</td>
-                          <td className="py-4 px-4">
-                              <span className="px-2.5 py-1 text-xs font-semibold text-amber-600 bg-amber-50 rounded-full">Processing</span>
-                          </td>
-                          <td className="py-4 px-4">
-                              <button className="text-gray-400 hover:text-red-600 transition-colors">
-                                <i className="fas fa-ellipsis-h"></i>
-                              </button>
-                          </td>
-                      </tr>
-                      <tr className="hover:bg-gray-50 transition-colors">
-                          <td className="py-4 px-4 text-sm font-medium text-gray-800">#ORD-003</td>
-                          <td className="py-4 px-4 text-sm text-gray-600">
-                              <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded bg-pink-100 flex items-center justify-center text-pink-600 text-xs font-bold">S</div>
-                                  ShopEase
-                              </div>
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-600">Amit Kumar</td>
-                          <td className="py-4 px-4 text-sm text-gray-500">Jun 14, 2026</td>
-                          <td className="py-4 px-4 text-sm font-bold text-gray-800">₹2,450</td>
-                          <td className="py-4 px-4">
-                              <span className="px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 rounded-full">Shipped</span>
-                          </td>
-                          <td className="py-4 px-4">
-                              <button className="text-gray-400 hover:text-red-600 transition-colors">
-                                <i className="fas fa-ellipsis-h"></i>
-                              </button>
-                          </td>
-                      </tr>
+                      {recentOrders.length === 0 ? (
+                          <tr>
+                              <td colSpan="7" className="py-6 text-center text-gray-500">No recent orders found</td>
+                          </tr>
+                      ) : (
+                          recentOrders.map((order, idx) => (
+                              <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                                  <td className="py-4 px-4 text-sm font-medium text-gray-800">#{order.id.slice(0, 8).toUpperCase()}</td>
+                                  <td className="py-4 px-4 text-sm text-gray-600">
+                                      <div className="flex items-center gap-2">
+                                          <div className={`w-6 h-6 rounded flex items-center justify-center text-white text-xs font-bold ${getRandomColor(idx)}`}>
+                                              {getInitials(order.company?.shop_name || order.company?.owner_name)}
+                                          </div>
+                                          {order.company?.shop_name || order.company?.owner_name || 'N/A'}
+                                      </div>
+                                  </td>
+                                  <td className="py-4 px-4 text-sm text-gray-600">{order.customer?.shop_name || order.customer?.owner_name || 'N/A'}</td>
+                                  <td className="py-4 px-4 text-sm text-gray-500">
+                                      {new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </td>
+                                  <td className="py-4 px-4 text-sm font-bold text-gray-800">₹{order.total_amount?.toLocaleString() || 0}</td>
+                                  <td className="py-4 px-4">
+                                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full capitalize ${getStatusColor(order.status)}`}>
+                                          {order.status?.replace('_', ' ') || 'pending'}
+                                      </span>
+                                  </td>
+                                  <td className="py-4 px-4">
+                                      <Link to={`/super-admin/orders/${order.id}`} className="text-gray-400 hover:text-red-600 transition-colors">
+                                        <i className="fas fa-ellipsis-h"></i>
+                                      </Link>
+                                  </td>
+                              </tr>
+                          ))
+                      )}
                   </tbody>
               </table>
           </div>

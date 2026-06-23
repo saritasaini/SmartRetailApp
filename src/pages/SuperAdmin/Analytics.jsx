@@ -11,6 +11,7 @@ import {
   Filler
 } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
+import { supabase } from '../../lib/supabase';
 
 ChartJS.register(
   CategoryScale,
@@ -27,12 +28,12 @@ const AnimatedCounter = ({ target, prefix = '' }) => {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (target === 0) {
+    let start = 0;
+    const end = Number(target) || 0;
+    if (end === 0) {
         setCount(0);
         return;
     }
-    let start = 0;
-    const end = parseInt(target, 10);
     const duration = 2500; // 2.5 seconds
     const increment = end / (duration / 16);
 
@@ -55,48 +56,262 @@ const AnimatedCounter = ({ target, prefix = '' }) => {
 export default function SuperAdminAnalytics() {
   const chartRef = useRef(null);
   const [chartData, setChartData] = useState(null);
+  const [doughnutData, setDoughnutData] = useState(null);
   const [activeFilter, setActiveFilter] = useState('7 Days');
+  const [loading, setLoading] = useState(true);
+  
+  const [stats, setStats] = useState({
+    revenue: 0,
+    orders: 0,
+    newCustomers: 0,
+    avgOrderValue: 0
+  });
+  const [topCompanies, setTopCompanies] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [doughnutStats, setDoughnutStats] = useState({
+      delivered: 0,
+      shipped: 0,
+      pending: 0,
+      total: 0
+  });
 
   useEffect(() => {
-    const chart = chartRef.current;
+    fetchAnalyticsData(activeFilter);
+  }, [activeFilter]);
 
-    if (chart) {
-      const ctx = chart.canvas.getContext('2d');
-      const gradient1 = ctx.createLinearGradient(0, 0, 0, 320);
-      gradient1.addColorStop(0, 'rgba(220, 38, 38, 0.2)');
-      gradient1.addColorStop(1, 'rgba(220, 38, 38, 0)');
+  const fetchAnalyticsData = async (filter) => {
+      try {
+          setLoading(true);
 
-      setChartData({
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [{
-            label: 'Revenue',
-            data: [150, 230, 180, 320, 280, 450, 380],
-            borderColor: '#dc2626',
-            backgroundColor: gradient1,
-            borderWidth: 3,
-            pointBackgroundColor: '#ffffff',
-            pointBorderColor: '#dc2626',
-            pointBorderWidth: 3,
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            fill: true,
-            tension: 0.4,
-            yAxisID: 'y'
-        }, {
-            label: 'Orders',
-            data: [2, 3, 2, 4, 3, 5, 4],
-            borderColor: '#60a5fa',
-            backgroundColor: 'transparent',
-            borderWidth: 2,
-            borderDash: [5, 5],
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            tension: 0.4,
-            yAxisID: 'y1'
-        }]
-      });
-    }
-  }, []);
+          let days = 7;
+          if (filter === '30 Days') days = 30;
+          if (filter === '90 Days') days = 90;
+          if (filter === '1 Year') days = 365;
+
+          const startDate = new Date();
+          startDate.setDate(startDate.getDate() - days);
+          const startDateStr = startDate.toISOString();
+
+          // 1. Fetch Orders
+          const { data: orders, error: ordersError } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                company:company_id(shop_name, owner_name),
+                customer:customer_id(shop_name, owner_name)
+            `)
+            .gte('created_at', startDateStr)
+            .order('created_at', { ascending: false });
+
+          if (ordersError) throw ordersError;
+
+          // 2. Fetch Profiles for Customers
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, role, created_at, shop_name, owner_name')
+            .gte('created_at', startDateStr)
+            .order('created_at', { ascending: false });
+
+          if (profilesError) throw profilesError;
+
+          const allOrders = orders || [];
+          const deliveredOrders = allOrders.filter(o => o.status === 'delivered');
+          const revenue = deliveredOrders.reduce((acc, curr) => acc + Number(curr.total_amount || 0), 0);
+          
+          const newCustomers = (profiles || []).filter(p => p.role === 'customer').length;
+          const avgOrderValue = deliveredOrders.length > 0 ? Math.floor(revenue / deliveredOrders.length) : 0;
+
+          setStats({
+              revenue,
+              orders: allOrders.length,
+              newCustomers,
+              avgOrderValue
+          });
+
+          // Top Companies (Group by company_id and sum total_amount)
+          const companiesMap = {};
+          deliveredOrders.forEach(o => {
+              if (o.company_id) {
+                  if (!companiesMap[o.company_id]) {
+                      companiesMap[o.company_id] = {
+                          id: o.company_id,
+                          name: o.company?.shop_name || o.company?.owner_name || 'Unknown',
+                          initials: getInitials(o.company?.shop_name || o.company?.owner_name),
+                          revenue: 0,
+                          orders: 0
+                      };
+                  }
+                  companiesMap[o.company_id].revenue += Number(o.total_amount || 0);
+                  companiesMap[o.company_id].orders += 1;
+              }
+          });
+
+          const sortedCompanies = Object.values(companiesMap)
+              .sort((a, b) => b.revenue - a.revenue)
+              .slice(0, 3);
+          
+          // Map sorted companies to visual details
+          const maxRev = sortedCompanies.length > 0 ? sortedCompanies[0].revenue : 1;
+          const colors = [
+              { color: 'from-pink-400 to-pink-600', bg: 'from-pink-100 to-pink-200 text-pink-600' },
+              { color: 'from-red-400 to-red-600', bg: 'from-red-100 to-red-200 text-red-600' },
+              { color: 'from-orange-400 to-orange-600', bg: 'from-orange-100 to-orange-200 text-orange-600' }
+          ];
+
+          setTopCompanies(sortedCompanies.map((c, idx) => ({
+              ...c,
+              amount: `₹${c.revenue.toLocaleString()}`,
+              ordersText: `${c.orders} orders`,
+              progress: `${Math.floor((c.revenue / maxRev) * 100)}%`,
+              color: colors[idx % colors.length].color,
+              bg: colors[idx % colors.length].bg
+          })));
+
+          // Order Status Doughnut
+          const deliveredCount = allOrders.filter(o => o.status === 'delivered').length;
+          const shippedCount = allOrders.filter(o => o.status === 'shipped').length;
+          const pendingCount = allOrders.filter(o => o.status === 'pending' || o.status === 'processing').length;
+          
+          setDoughnutStats({
+              delivered: deliveredCount,
+              shipped: shippedCount,
+              pending: pendingCount,
+              total: allOrders.length || 1 // prevent div by zero
+          });
+
+          setDoughnutData({
+              labels: ['Delivered', 'Shipped', 'Pending'],
+              datasets: [{
+                  data: [deliveredCount, shippedCount, pendingCount],
+                  backgroundColor: ['#10b981', '#3b82f6', '#f59e0b'],
+                  borderWidth: 0,
+                  hoverOffset: 8
+              }]
+          });
+
+          // Line Chart Data
+          // We will generate the last N days array depending on filter (max 14 points to prevent clutter)
+          const dataPoints = Math.min(days, 14);
+          const labelsArr = [];
+          const revenueArr = [];
+          const ordersArr = [];
+
+          for (let i = dataPoints - 1; i >= 0; i--) {
+              const d = new Date();
+              if (days > 14) {
+                  // For 30, 90, 365, group by larger intervals
+                  const step = Math.floor(days / dataPoints);
+                  d.setDate(d.getDate() - (i * step));
+                  const endD = new Date(d);
+                  endD.setDate(endD.getDate() + step);
+                  
+                  const periodOrders = allOrders.filter(o => new Date(o.created_at) >= d && new Date(o.created_at) < endD);
+                  const periodRev = periodOrders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+                  
+                  labelsArr.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                  revenueArr.push(periodRev);
+                  ordersArr.push(periodOrders.length);
+              } else {
+                  d.setDate(d.getDate() - i);
+                  const dateStr = d.toISOString().split('T')[0];
+                  
+                  const dayOrders = allOrders.filter(o => o.created_at.startsWith(dateStr));
+                  const dayRev = dayOrders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+                  
+                  labelsArr.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+                  revenueArr.push(dayRev);
+                  ordersArr.push(dayOrders.length);
+              }
+          }
+
+          const chart = chartRef.current;
+          let gradient1 = 'rgba(220, 38, 38, 0.2)';
+          if (chart) {
+            const ctx = chart.canvas.getContext('2d');
+            gradient1 = ctx.createLinearGradient(0, 0, 0, 320);
+            gradient1.addColorStop(0, 'rgba(220, 38, 38, 0.2)');
+            gradient1.addColorStop(1, 'rgba(220, 38, 38, 0)');
+          }
+
+          setChartData({
+            labels: labelsArr,
+            datasets: [{
+                label: 'Revenue',
+                data: revenueArr,
+                borderColor: '#dc2626',
+                backgroundColor: gradient1,
+                borderWidth: 3,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#dc2626',
+                pointBorderWidth: 3,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                fill: true,
+                tension: 0.4,
+                yAxisID: 'y'
+            }, {
+                label: 'Orders',
+                data: ordersArr,
+                borderColor: '#60a5fa',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                tension: 0.4,
+                yAxisID: 'y1'
+            }]
+          });
+
+          // Recent Activity
+          const activities = [];
+          
+          allOrders.slice(0, 4).forEach(o => {
+              let title = `Order #${o.id.slice(0,8).toUpperCase()} ${o.status.replace('_', ' ')}`;
+              let desc = `${o.company?.shop_name || 'Unknown'} - ₹${o.total_amount}`;
+              let icon = o.status === 'delivered' ? 'fas fa-check' : 'fas fa-shipping-fast';
+              let color = o.status === 'delivered' ? 'from-emerald-100 to-emerald-200 text-emerald-600' : 'from-blue-100 to-blue-200 text-blue-600';
+              let hover = o.status === 'delivered' ? 'hover:bg-emerald-50 hover:border-emerald-100' : 'hover:bg-blue-50 hover:border-blue-100';
+
+              activities.push({ title, desc, time: o.created_at, icon, color, hover });
+          });
+
+          (profiles || []).slice(0, 2).forEach(p => {
+              activities.push({
+                  title: `New ${p.role} registered`,
+                  desc: `${p.shop_name || p.owner_name} joined`,
+                  time: p.created_at,
+                  icon: p.role === 'company' ? 'fas fa-building' : 'fas fa-user-plus',
+                  color: p.role === 'company' ? 'from-purple-100 to-purple-200 text-purple-600' : 'from-red-100 to-red-200 text-red-600',
+                  hover: p.role === 'company' ? 'hover:bg-purple-50 hover:border-purple-100' : 'hover:bg-red-50 hover:border-red-100'
+              });
+          });
+
+          activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+          setRecentActivity(activities.slice(0, 4));
+
+      } catch (error) {
+          console.error("Error fetching analytics data", error);
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  const timeAgo = (dateStr) => {
+      const ms = new Date() - new Date(dateStr);
+      const minutes = Math.floor(ms / 60000);
+      if (minutes < 1) return 'Just now';
+      if (minutes < 60) return `${minutes} mins ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} hours ago`;
+      const days = Math.floor(hours / 24);
+      return `${days} days ago`;
+  };
+
+  const getInitials = (name) => {
+      if (!name) return 'NA';
+      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
 
   const lineOptions = {
       responsive: true,
@@ -129,16 +344,6 @@ export default function SuperAdminAnalytics() {
       animation: { duration: 2000, easing: 'easeInOutQuart' }
   };
 
-  const doughnutData = {
-      labels: ['Delivered', 'Shipped', 'Pending'],
-      datasets: [{
-          data: [4, 7, 5],
-          backgroundColor: ['#10b981', '#3b82f6', '#f59e0b'],
-          borderWidth: 0,
-          hoverOffset: 8
-      }]
-  };
-
   const doughnutOptions = {
       responsive: true,
       maintainAspectRatio: false,
@@ -154,6 +359,15 @@ export default function SuperAdminAnalytics() {
       },
       animation: { animateRotate: true, duration: 2000 }
   };
+
+  if (loading) {
+      return (
+          <div className="flex flex-col justify-center items-center h-64 fade-in">
+              <i className="fas fa-circle-notch fa-spin text-4xl text-red-500 mb-4"></i>
+              <p className="text-gray-500 font-medium">Loading Analytics...</p>
+          </div>
+      );
+  }
 
   return (
       <div className="space-y-8">
@@ -185,11 +399,11 @@ export default function SuperAdminAnalytics() {
                           <i className="fas fa-rupee-sign"></i>
                       </div>
                       <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
-                          <i className="fas fa-arrow-up text-xs"></i> 24%
+                          <i className="fas fa-arrow-up text-xs"></i>
                       </span>
                   </div>
                   <h3 className="text-3xl font-bold text-gray-800 mb-1">
-                      <AnimatedCounter target={1090} prefix="₹" />
+                      <AnimatedCounter target={stats.revenue} prefix="₹" />
                   </h3>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Total Revenue</p>
                   <div className="mt-4 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -204,11 +418,11 @@ export default function SuperAdminAnalytics() {
                           <i className="fas fa-shopping-bag"></i>
                       </div>
                       <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
-                          <i className="fas fa-arrow-up text-xs"></i> 12%
+                          <i className="fas fa-arrow-up text-xs"></i>
                       </span>
                   </div>
                   <h3 className="text-3xl font-bold text-gray-800 mb-1">
-                      <AnimatedCounter target={16} />
+                      <AnimatedCounter target={stats.orders} />
                   </h3>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Total Orders</p>
                   <div className="mt-4 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -223,11 +437,11 @@ export default function SuperAdminAnalytics() {
                           <i className="fas fa-users"></i>
                       </div>
                       <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
-                          <i className="fas fa-arrow-up text-xs"></i> 8%
+                          <i className="fas fa-arrow-up text-xs"></i>
                       </span>
                   </div>
                   <h3 className="text-3xl font-bold text-gray-800 mb-1">
-                      <AnimatedCounter target={3} />
+                      <AnimatedCounter target={stats.newCustomers} />
                   </h3>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">New Customers</p>
                   <div className="mt-4 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -242,11 +456,11 @@ export default function SuperAdminAnalytics() {
                           <i className="fas fa-percentage"></i>
                       </div>
                       <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
-                          <i className="fas fa-arrow-up text-xs"></i> 5%
+                          <i className="fas fa-arrow-up text-xs"></i>
                       </span>
                   </div>
                   <h3 className="text-3xl font-bold text-gray-800 mb-1">
-                      <AnimatedCounter target={68} />
+                      <AnimatedCounter target={stats.avgOrderValue} prefix="₹" />
                   </h3>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Avg Order Value</p>
                   <div className="mt-4 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -270,7 +484,7 @@ export default function SuperAdminAnalytics() {
                       </div>
                   </div>
                   <div className="relative h-[320px]">
-                      {chartData ? <Line data={chartData} options={lineOptions} /> : <Line ref={chartRef} data={{datasets: []}} options={{}} />}
+                      {chartData ? <Line ref={chartRef} data={chartData} options={lineOptions} /> : null}
                   </div>
               </div>
 
@@ -281,16 +495,13 @@ export default function SuperAdminAnalytics() {
                           <h3 className="text-lg font-bold text-gray-800">Top Companies</h3>
                           <p className="text-sm text-gray-500 mt-1">By revenue generated</p>
                       </div>
-                      <button className="text-xs font-semibold text-red-600 hover:text-red-700 transition-colors">View All</button>
                   </div>
                   <div className="space-y-6">
-                      {[
-                          { initials: 'S', name: 'Saras Parler', orders: '12 orders', amount: '₹5,400', progress: '85%', color: 'from-pink-400 to-pink-600', bg: 'from-pink-100 to-pink-200 text-pink-600' },
-                          { initials: 'A', name: 'Amul', orders: '8 orders', amount: '₹3,200', progress: '60%', color: 'from-red-400 to-red-600', bg: 'from-red-100 to-red-200 text-red-600' },
-                          { initials: 'M', name: 'Mahadev', orders: '6 orders', amount: '₹2,100', progress: '40%', color: 'from-orange-400 to-orange-600', bg: 'from-orange-100 to-orange-200 text-orange-600' }
-                      ].map((company, i) => (
+                      {topCompanies.length === 0 ? (
+                          <div className="text-center text-sm text-gray-500 py-6">No data for selected period</div>
+                      ) : topCompanies.map((company, i) => (
                           <motion.div 
-                              key={i} 
+                              key={company.id} 
                               className="group cursor-pointer"
                               initial={{ x: -20, opacity: 0 }}
                               animate={{ x: 0, opacity: 1 }}
@@ -303,7 +514,7 @@ export default function SuperAdminAnalytics() {
                                       </div>
                                       <div>
                                           <p className="text-sm font-bold text-gray-800">{company.name}</p>
-                                          <p className="text-xs text-gray-500">{company.orders}</p>
+                                          <p className="text-xs text-gray-500">{company.ordersText}</p>
                                       </div>
                                   </div>
                                   <span className="text-sm font-bold text-gray-800">{company.amount}</span>
@@ -332,7 +543,7 @@ export default function SuperAdminAnalytics() {
                   </div>
                   <div className="flex flex-col sm:flex-row items-center gap-8">
                       <div className="w-48 h-48 relative shrink-0">
-                          <Doughnut data={doughnutData} options={doughnutOptions} />
+                          {doughnutData && <Doughnut data={doughnutData} options={doughnutOptions} />}
                       </div>
                       <div className="space-y-4 flex-1 w-full">
                           <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-100 hover:shadow-md transition-shadow">
@@ -340,21 +551,21 @@ export default function SuperAdminAnalytics() {
                                   <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
                                   <span className="text-sm font-medium text-gray-700">Delivered</span>
                               </div>
-                              <span className="text-sm font-bold text-emerald-600">4 (25%)</span>
+                              <span className="text-sm font-bold text-emerald-600">{doughnutStats.delivered} ({Math.round(doughnutStats.delivered / doughnutStats.total * 100)}%)</span>
                           </div>
                           <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50 border border-blue-100 hover:shadow-md transition-shadow">
                               <div className="flex items-center gap-3">
                                   <span className="w-3 h-3 rounded-full bg-blue-500"></span>
                                   <span className="text-sm font-medium text-gray-700">Shipped</span>
                               </div>
-                              <span className="text-sm font-bold text-blue-600">7 (44%)</span>
+                              <span className="text-sm font-bold text-blue-600">{doughnutStats.shipped} ({Math.round(doughnutStats.shipped / doughnutStats.total * 100)}%)</span>
                           </div>
                           <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-100 hover:shadow-md transition-shadow">
                               <div className="flex items-center gap-3">
                                   <span className="w-3 h-3 rounded-full bg-amber-500"></span>
                                   <span className="text-sm font-medium text-gray-700">Pending</span>
                               </div>
-                              <span className="text-sm font-bold text-amber-600">5 (31%)</span>
+                              <span className="text-sm font-bold text-amber-600">{doughnutStats.pending} ({Math.round(doughnutStats.pending / doughnutStats.total * 100)}%)</span>
                           </div>
                       </div>
                   </div>
@@ -367,15 +578,11 @@ export default function SuperAdminAnalytics() {
                           <h3 className="text-lg font-bold text-gray-800">Recent Activity</h3>
                           <p className="text-sm text-gray-500 mt-1">Latest platform activities</p>
                       </div>
-                      <button className="text-xs font-semibold text-red-600 hover:text-red-700 transition-colors">View All</button>
                   </div>
                   <div className="space-y-4">
-                      {[
-                          { title: 'Order #ORD-001 delivered', desc: 'Saras Parler - ₹1,200', time: '2 hours ago', icon: 'fas fa-check', color: 'from-emerald-100 to-emerald-200 text-emerald-600', hover: 'hover:bg-emerald-50 hover:border-emerald-100' },
-                          { title: 'Order #ORD-003 shipped', desc: 'Mahadev - ₹2,450', time: '5 hours ago', icon: 'fas fa-shipping-fast', color: 'from-blue-100 to-blue-200 text-blue-600', hover: 'hover:bg-blue-50 hover:border-blue-100' },
-                          { title: 'New customer registered', desc: 'Rajesh Sahu joined Saras Parler', time: '1 day ago', icon: 'fas fa-user-plus', color: 'from-red-100 to-red-200 text-red-600', hover: 'hover:bg-red-50 hover:border-red-100' },
-                          { title: 'Invoice #INV-004 generated', desc: 'Amul - ₹890', time: '2 days ago', icon: 'fas fa-file-invoice', color: 'from-purple-100 to-purple-200 text-purple-600', hover: 'hover:bg-purple-50 hover:border-purple-100' }
-                      ].map((activity, i) => (
+                      {recentActivity.length === 0 ? (
+                          <div className="text-center text-sm text-gray-500 py-4">No recent activities</div>
+                      ) : recentActivity.map((activity, i) => (
                           <div key={i} className={`flex items-start gap-4 p-4 rounded-xl bg-gray-50/50 transition-colors cursor-pointer border border-transparent ${activity.hover}`}>
                               <div className={`w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center flex-shrink-0 shadow-sm ${activity.color}`}>
                                   <i className={`${activity.icon} text-sm`}></i>
@@ -383,7 +590,7 @@ export default function SuperAdminAnalytics() {
                               <div className="flex-1">
                                   <p className="text-sm font-semibold text-gray-800">{activity.title}</p>
                                   <p className="text-xs text-gray-500 mt-1">{activity.desc}</p>
-                                  <p className="text-xs text-gray-400 mt-1">{activity.time}</p>
+                                  <p className="text-xs text-gray-400 mt-1">{timeAgo(activity.time)}</p>
                               </div>
                           </div>
                       ))}
