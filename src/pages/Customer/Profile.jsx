@@ -9,6 +9,7 @@ export default function Profile() {
   const { user, profile, fetchProfile } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [formData, setFormData] = useState({
     shop_name: '',
     owner_name: '',
@@ -123,10 +124,20 @@ export default function Profile() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full bg-bg-tertiary border border-border-light rounded-lg pl-10 pr-4 py-2.5 text-text-primary focus:outline-none focus:border-brand-caramel focus:ring-1 focus:ring-brand-caramel transition-colors"
+                  onBlur={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    if (val && val.length !== 10) {
+                      setPhoneError('Please enter a valid 10-digit phone number.');
+                    } else {
+                      setPhoneError('');
+                      setFormData(prev => ({ ...prev, phone: val }));
+                    }
+                  }}
+                  className={`w-full bg-bg-tertiary border ${phoneError ? 'border-red-500' : 'border-border-light'} rounded-lg pl-10 pr-4 py-2.5 text-text-primary focus:outline-none focus:border-brand-caramel focus:ring-1 focus:ring-brand-caramel transition-colors`}
                   placeholder="e.g. +91 9876543210"
                 />
               </div>
+              {phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}
             </div>
 
             {/* Address */}

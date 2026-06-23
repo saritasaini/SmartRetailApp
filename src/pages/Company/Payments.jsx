@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
-import { Search, IndianRupee, CheckCircle, XCircle, Clock, Plus, Loader2 } from 'lucide-react';
+import { Search, IndianRupee, CheckCircle, XCircle, Clock, Plus, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function PaymentManagement() {
@@ -13,6 +13,11 @@ export default function PaymentManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [methodFilter, setMethodFilter] = useState('all');
   const [upiStatusFilter, setUpiStatusFilter] = useState('all');
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -176,6 +181,31 @@ export default function PaymentManagement() {
     return matchesSearch && matchesMethod && matchesUpiStatus;
   });
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, methodFilter, upiStatusFilter]);
+
+  const totalPages = Math.ceil(filteredPayments.length / ITEMS_PER_PAGE) || 1;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedPayments = filteredPayments.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, '...', totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -183,12 +213,12 @@ export default function PaymentManagement() {
           <h1 className="text-3xl font-bold text-text-primary mb-2">Payment Verification</h1>
           <p className="text-text-secondary">Verify customer payments and log manual receipts.</p>
         </div>
-        <Button 
+        <button 
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2"
+          className="bg-gradient-to-br from-red-600 to-red-800 text-white border-none py-3 px-6 rounded-xl text-[14px] font-[600] cursor-pointer flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(220,38,38,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(220,38,38,0.4)] w-full md:w-auto"
         >
-          <Plus size={18} /> Add Payment
-        </Button>
+          <Plus size={16} strokeWidth={2.5} /> Add Payment
+        </button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 mb-4 justify-between lg:items-center">
@@ -276,10 +306,10 @@ export default function PaymentManagement() {
                   </td>
                 </tr>
               ) : (
-                filteredPayments.map((payment, index) => (
+                paginatedPayments.map((payment, index) => (
                   <tr key={payment.id} className="border-b border-border-light/50 hover:bg-bg-primary/5 transition-colors">
                     <td className="py-3 px-4 text-sm font-bold text-text-secondary">
-                      {index + 1}
+                      {startIndex + index + 1}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       <p className="text-sm text-text-primary font-medium">{new Date(payment.created_at).toLocaleDateString()}</p>
@@ -334,6 +364,41 @@ export default function PaymentManagement() {
           </table>
         </div>
       </GlassCard>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="w-9 h-9 rounded-full border-none bg-transparent text-gray-500 text-[18px] flex items-center justify-center cursor-pointer hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          {getPageNumbers().map((page, i) => (
+            page === '...' ? (
+              <span key={`ellipsis-${i}`} className="text-gray-400 px-1">...</span>
+            ) : (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-9 h-9 rounded-full border-none flex items-center justify-center text-[14px] font-[600] cursor-pointer transition-all ${currentPage === page ? 'bg-red-600 text-white shadow-[0_4px_12px_rgba(220,38,38,0.3)]' : 'bg-transparent text-gray-500 hover:bg-gray-100'}`}
+              >
+                {page}
+              </button>
+            )
+          ))}
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="w-9 h-9 rounded-full border-none bg-transparent text-gray-500 text-[18px] flex items-center justify-center cursor-pointer hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
 
       {/* Manual Payment Modal */}
       {isAddModalOpen && (

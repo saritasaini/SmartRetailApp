@@ -18,6 +18,7 @@ export default function Register() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
   
   const signUp = useAuthStore(state => state.signUp);
   const navigate = useNavigate();
@@ -143,10 +144,20 @@ export default function Register() {
               required
               value={formData.phone}
               onChange={handleChange}
-              className="w-full bg-bg-primary border border-border-light rounded-lg py-2 pl-10 pr-4 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-caramel/50 focus:border-brand-caramel transition-colors"
+              onBlur={(e) => {
+                const val = e.target.value.replace(/\D/g, '');
+                if (val && val.length !== 10) {
+                  setPhoneError('Please enter a valid 10-digit phone number.');
+                } else {
+                  setPhoneError('');
+                  setFormData(prev => ({ ...prev, phone: val }));
+                }
+              }}
+              className={`w-full bg-bg-primary border ${phoneError ? 'border-red-500' : 'border-border-light'} rounded-lg py-2 pl-10 pr-4 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-caramel/50 focus:border-brand-caramel transition-colors`}
               placeholder="+91 9876543210"
             />
           </div>
+          {phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}
         </div>
 
         <div>

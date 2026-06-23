@@ -5,7 +5,7 @@ import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
 import { 
   ArrowLeft, Store, Users, Phone, MapPin, 
-  ShoppingCart, TrendingUp, Package, XCircle, Mail, MessageCircle 
+  ShoppingCart, TrendingUp, Package, XCircle, Mail, MessageCircle, Search 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -423,7 +423,7 @@ export default function CustomerDetail() {
                             order.status === 'out_for_delivery' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                             'bg-brand-honey/10 text-brand-honey border-yellow-500/20'
                           }`}>
-                            {order.status.replace('_', ' ').toUpperCase()}
+                            {(order.status || 'pending').replace('_', ' ').toUpperCase()}
                           </span>
                         </td>
                       </tr>
@@ -467,10 +467,10 @@ export default function CustomerDetail() {
                 </thead>
                 <tbody>
                   {payments.filter(p => 
-                    p.reference_id?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
-                    p.payment_method?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
-                    p.status?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
-                    p.amount?.toString().includes(ledgerSearch)
+                    p.reference_id?.toLowerCase()?.includes(ledgerSearch.toLowerCase()) ||
+                    p.payment_method?.toLowerCase()?.includes(ledgerSearch.toLowerCase()) ||
+                    p.status?.toLowerCase()?.includes(ledgerSearch.toLowerCase()) ||
+                    p.amount?.toString()?.includes(ledgerSearch)
                   ).length === 0 ? (
                     <tr>
                       <td colSpan="5" className="text-center py-8 text-text-secondary">
@@ -479,10 +479,10 @@ export default function CustomerDetail() {
                     </tr>
                   ) : (
                     payments.filter(p => 
-                      p.reference_id?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
-                      p.payment_method?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
-                      p.status?.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
-                      p.amount?.toString().includes(ledgerSearch)
+                      p.reference_id?.toLowerCase()?.includes(ledgerSearch.toLowerCase()) ||
+                      p.payment_method?.toLowerCase()?.includes(ledgerSearch.toLowerCase()) ||
+                      p.status?.toLowerCase()?.includes(ledgerSearch.toLowerCase()) ||
+                      p.amount?.toString()?.includes(ledgerSearch)
                     ).map((payment) => (
                       <tr key={payment.id} className="border-b border-border-light/50 hover:bg-bg-primary/5 transition-colors">
                         <td className="py-3 px-4 text-sm text-text-primary whitespace-nowrap">
@@ -492,7 +492,7 @@ export default function CustomerDetail() {
                           ₹{payment.amount}
                         </td>
                         <td className="py-3 px-4 text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
-                          {payment.payment_method.replace('_', ' ')}
+                          {payment.payment_method ? payment.payment_method.replace('_', ' ') : 'N/A'}
                         </td>
                         <td className="py-3 px-4 text-sm text-text-primary font-mono whitespace-nowrap">
                           {payment.reference_id || 'N/A'}
@@ -503,7 +503,7 @@ export default function CustomerDetail() {
                             payment.status === 'rejected' ? 'bg-brand-berry/10 text-brand-berry border-brand-berry/20' :
                             'bg-brand-honey/10 text-brand-honey border-yellow-500/20'
                           }`}>
-                            {payment.status.toUpperCase()}
+                            {(payment.status || 'pending').toUpperCase()}
                           </span>
                         </td>
                       </tr>
@@ -545,7 +545,7 @@ export default function CustomerDetail() {
                 </thead>
                 <tbody>
                   {purchasedProducts.filter(p => 
-                    p.name?.toLowerCase().includes(productSearch.toLowerCase())
+                    p.name?.toLowerCase()?.includes(productSearch.toLowerCase())
                   ).length === 0 ? (
                     <tr>
                       <td colSpan="3" className="text-center py-8 text-text-secondary">
@@ -554,7 +554,7 @@ export default function CustomerDetail() {
                     </tr>
                   ) : (
                     purchasedProducts.filter(p => 
-                      p.name?.toLowerCase().includes(productSearch.toLowerCase())
+                      p.name?.toLowerCase()?.includes(productSearch.toLowerCase())
                     ).map((product) => (
                       <tr key={product.id} className="border-b border-border-light/50 hover:bg-bg-primary/5 transition-colors">
                         <td className="py-3 px-4">

@@ -21,6 +21,7 @@ export default function CompanySettings() {
   
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
@@ -316,9 +317,12 @@ export default function CompanySettings() {
                 </h3>
                 <p className="text-sm text-text-secondary mt-1">Manage staff roles, details, and access.</p>
               </div>
-              <Button onClick={() => handleOpenModal()} className="flex items-center gap-2 shadow-lg shadow-brand-caramel/20 hover:scale-105 transition-transform duration-300">
-                <Plus size={18} /> Add New Member
-              </Button>
+              <button 
+                onClick={() => handleOpenModal()}
+                className="bg-gradient-to-br from-red-600 to-red-800 text-white border-none py-3 px-6 rounded-xl text-[14px] font-[600] cursor-pointer flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(220,38,38,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(220,38,38,0.4)] w-full md:w-auto"
+              >
+                <Plus size={16} strokeWidth={2.5} /> Add New Member
+              </button>
             </div>
             
             <div className="overflow-x-auto">
@@ -437,9 +441,19 @@ export default function CompanySettings() {
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className="w-full bg-bg-primary border border-border-light rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand-caramel focus:ring-1 focus:ring-brand-caramel"
+                    onBlur={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val && val.length !== 10) {
+                        setPhoneError('Please enter a valid 10-digit phone number.');
+                      } else {
+                        setPhoneError('');
+                        setFormData(prev => ({ ...prev, phone: val }));
+                      }
+                    }}
+                    className={`w-full bg-bg-primary border ${phoneError ? 'border-red-500' : 'border-border-light'} rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand-caramel focus:ring-1 focus:ring-brand-caramel`}
                     placeholder="e.g. 9876543210"
                   />
+                  {phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}
                 </div>
 
                 <div>

@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function CartPage() {
-  const { items, updateQuantity, removeItem, clearCart, getTotal } = useCartStore();
+  const { items, updateQuantity, removeItem, clearCart, emptyCartDB, getTotal } = useCartStore();
   const user = useAuthStore(state => state.user);
   const profile = useAuthStore(state => state.profile);
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -81,7 +81,7 @@ export default function CartPage() {
 
       // Success
       setOrderPlaced(true);
-      clearCart();
+      emptyCartDB();
     } catch (err) {
       console.error('Error placing order:', err);
       setError(err.message || 'Failed to place order. Please try again.');
@@ -135,7 +135,7 @@ export default function CartPage() {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-text-primary">Shopping Cart</h1>
-        <Button variant="outline" className="text-xs text-brand-caramel border-brand-caramel hover:bg-brand-caramel/10" onClick={clearCart}>
+        <Button variant="outline" className="text-xs text-brand-caramel border-brand-caramel hover:bg-brand-caramel/10" onClick={emptyCartDB}>
           Clear Cart
         </Button>
       </div>

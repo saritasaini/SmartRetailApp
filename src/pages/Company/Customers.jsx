@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
-import { Users, CheckCircle, XCircle, Search, MapPin, Phone, Store, BarChart2, LayoutGrid, List, UserPlus, Share2, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Search, MapPin, Phone, Store, BarChart2, LayoutGrid, List, UserPlus, Share2, Edit, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { logCompanyAction } from '../../lib/logger';
 
@@ -16,6 +16,10 @@ export default function CustomerManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all'); // all, pending, approved
   const [viewMode, setViewMode] = useState('grid'); // grid, list
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   const impersonateCustomer = useAuthStore(state => state.impersonateCustomer);
 
@@ -33,6 +37,8 @@ export default function CustomerManagement() {
   });
   const [editCustomer, setEditCustomer] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [newPhoneError, setNewPhoneError] = useState('');
+  const [editPhoneError, setEditPhoneError] = useState('');
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -111,7 +117,8 @@ export default function CustomerManagement() {
             phone: newCustomer.phone,
             address: newCustomer.address,
             role: 'customer',
-            company_id: useAuthStore.getState().user.id
+            company_id: useAuthStore.getState().user.id,
+            email: newCustomer.email
           }
         }
       });
@@ -266,6 +273,31 @@ export default function CustomerManagement() {
     return matchesSearch && matchesFilter;
   });
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filter]);
+
+  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE) || 1;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedCustomers = filteredCustomers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, '...', totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
   const handleLoginAs = (customer) => {
     impersonateCustomer(customer);
     navigate('/customer');
@@ -279,12 +311,12 @@ export default function CustomerManagement() {
           <p className="text-text-secondary">Manage your B2B customers and approve new registrations.</p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
-          <Button 
+          <button 
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm"
+            className="bg-gradient-to-br from-red-600 to-red-800 text-white border-none py-3 px-6 rounded-xl text-[14px] font-[600] cursor-pointer flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(220,38,38,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(220,38,38,0.4)] w-full md:w-auto"
           >
-            <UserPlus size={18} /> Add New Customer
-          </Button>
+            <UserPlus size={16} strokeWidth={2.5} /> Add New Customer
+          </button>
         </div>
       </div>
 
@@ -348,7 +380,7 @@ export default function CustomerManagement() {
         ) : filteredCustomers.length === 0 ? (
           <div className="col-span-full text-center py-12 text-text-secondary">No retailers found.</div>
         ) : viewMode === 'grid' ? (
-          filteredCustomers.map((customer) => (
+          paginatedCustomers.map((customer) => (
             <motion.div
               key={customer.id}
               initial={{ opacity: 0, scale: 0.95 }}
@@ -466,7 +498,7 @@ export default function CustomerManagement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCustomers.map((customer, index) => (
+                  {paginatedCustomers.map((customer, index) => (
                     <tr 
                       key={customer.id} 
                       className="border-b border-border-light/50 hover:bg-bg-primary/5 transition-colors cursor-pointer"
@@ -558,6 +590,41 @@ export default function CustomerManagement() {
         )}
       </div>
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="w-9 h-9 rounded-full border-none bg-transparent text-gray-500 text-[18px] flex items-center justify-center cursor-pointer hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          {getPageNumbers().map((page, i) => (
+            page === '...' ? (
+              <span key={`ellipsis-${i}`} className="text-gray-400 px-1">...</span>
+            ) : (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-9 h-9 rounded-full border-none flex items-center justify-center text-[14px] font-[600] cursor-pointer transition-all ${currentPage === page ? 'bg-red-600 text-white shadow-[0_4px_12px_rgba(220,38,38,0.3)]' : 'bg-transparent text-gray-500 hover:bg-gray-100'}`}
+              >
+                {page}
+              </button>
+            )
+          ))}
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="w-9 h-9 rounded-full border-none bg-transparent text-gray-500 text-[18px] flex items-center justify-center cursor-pointer hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
+
       {/* Add Customer Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -631,9 +698,19 @@ export default function CustomerManagement() {
                     required
                     value={newCustomer.phone}
                     onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
-                    className="w-full bg-bg-primary border border-border-light rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel"
+                    onBlur={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val && val.length !== 10) {
+                        setNewPhoneError('Please enter a valid 10-digit phone number.');
+                      } else {
+                        setNewPhoneError('');
+                        setNewCustomer(prev => ({ ...prev, phone: val }));
+                      }
+                    }}
+                    className={`w-full bg-bg-primary border ${newPhoneError ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel`}
                     placeholder="10-digit number"
                   />
+                  {newPhoneError && <p className="text-red-500 text-xs mt-1">{newPhoneError}</p>}
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-text-secondary mb-1">Full Address</label>
@@ -716,8 +793,18 @@ export default function CustomerManagement() {
                     required
                     value={editCustomer.phone}
                     onChange={(e) => setEditCustomer({...editCustomer, phone: e.target.value})}
-                    className="w-full bg-bg-primary border border-border-light rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel"
+                    onBlur={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val && val.length !== 10) {
+                        setEditPhoneError('Please enter a valid 10-digit phone number.');
+                      } else {
+                        setEditPhoneError('');
+                        setEditCustomer(prev => ({ ...prev, phone: val }));
+                      }
+                    }}
+                    className={`w-full bg-bg-primary border ${editPhoneError ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel`}
                   />
+                  {editPhoneError && <p className="text-red-500 text-xs mt-1">{editPhoneError}</p>}
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-text-secondary mb-1">Full Address</label>

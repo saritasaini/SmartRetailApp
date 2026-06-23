@@ -12,6 +12,7 @@ export default function SuperAdminSettings() {
         email: user?.email || 'admin@smartretail.com',
         phone: profile?.phone || '+91 98765 43210'
     });
+    const [phoneError, setPhoneError] = useState('');
 
     useEffect(() => {
         if (profile || user) {
@@ -237,7 +238,16 @@ export default function SuperAdminSettings() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                                        <input type="tel" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} className="input-field w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none" />
+                                        <input type="tel" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} onBlur={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '');
+                                            if (val && val.length !== 10) {
+                                                setPhoneError('Please enter a valid 10-digit phone number.');
+                                            } else {
+                                                setPhoneError('');
+                                                setProfileData(prev => ({ ...prev, phone: val }));
+                                            }
+                                        }} className={`input-field w-full px-4 py-3 rounded-xl border ${phoneError ? 'border-red-500' : 'border-gray-200'} bg-white text-sm focus:outline-none`} />
+                                        {phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>

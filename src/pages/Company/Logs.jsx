@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import GlassCard from '../../components/ui/GlassCard';
-import { Activity, Clock, Filter, Search, ChevronDown, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { Activity, Clock, Filter, Search, ChevronDown, CheckCircle, AlertTriangle, Info, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { supabase } from '../../lib/supabase';
@@ -12,6 +12,10 @@ export default function CompanyLogs() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -55,21 +59,64 @@ export default function CompanyLogs() {
     return matchesSearch && matchesType;
   });
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, typeFilter]);
+
+  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE) || 1;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedLogs = filteredLogs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, '...', totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
   const getLogIcon = (type) => {
     switch (type) {
-      case 'success': return <CheckCircle size={18} className="text-brand-pistachio" />;
-      case 'warning': return <AlertTriangle size={18} className="text-brand-honey" />;
+      case 'success': return <CheckCircle size={18} />;
+      case 'warning': return <AlertTriangle size={18} />;
       case 'info':
-      default: return <Info size={18} className="text-blue-500" />;
+      default: return <Info size={18} />;
     }
   };
 
-  const getLogBg = (type) => {
+  const getIconBg = (type) => {
     switch (type) {
-      case 'success': return 'bg-brand-pistachio/10 border-brand-pistachio/20';
-      case 'warning': return 'bg-brand-honey/10 border-brand-honey/20';
+      case 'success': return 'bg-green-100 text-green-600';
+      case 'warning': return 'bg-orange-100 text-orange-600';
       case 'info':
-      default: return 'bg-blue-500/10 border-blue-500/20';
+      default: return 'bg-blue-100 text-blue-600';
+    }
+  };
+
+  const getAccentBg = (type) => {
+    switch (type) {
+      case 'success': return 'bg-green-600';
+      case 'warning': return 'bg-orange-600';
+      case 'info':
+      default: return 'bg-blue-600';
+    }
+  };
+
+  const getBadgeBg = (type) => {
+    switch (type) {
+      case 'success': return 'bg-green-100 text-green-700';
+      case 'warning': return 'bg-orange-100 text-orange-700';
+      case 'info':
+      default: return 'bg-blue-100 text-blue-700';
     }
   };
 
@@ -82,31 +129,29 @@ export default function CompanyLogs() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <GlassCard className="flex flex-1 items-center gap-2 px-4 py-2.5 w-full">
-          <Search className="text-text-secondary shrink-0" size={18} />
+      <div className="flex flex-col sm:flex-row gap-4 mb-5">
+        <div className="relative flex-1 max-w-[500px]">
+          <Search className="absolute left-[18px] top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input 
             type="text" 
             placeholder="Search logs by action, detail, or user..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-transparent border-none text-text-primary focus:outline-none w-full text-sm"
+            className="w-full py-[14px] pl-[48px] pr-4 border border-border-light rounded-xl text-sm text-text-primary bg-bg-secondary shadow-sm focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all"
           />
-        </GlassCard>
+        </div>
 
         <div className="relative sm:w-48 z-40">
-          <GlassCard 
-            className="flex items-center justify-between py-2.5 px-4 cursor-pointer h-full"
+          <button 
+            className="w-full py-[14px] px-[20px] border border-border-light rounded-xl bg-bg-secondary text-text-secondary text-sm font-medium cursor-pointer flex items-center justify-between gap-2 shadow-sm hover:border-red-200 hover:shadow-md transition-all"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
             <div className="flex items-center gap-2">
-              <Filter className="text-text-secondary" size={18} />
-              <span className="text-sm text-text-primary capitalize truncate">
-                {typeFilter === 'all' ? 'All Types' : typeFilter}
-              </span>
+              <Filter size={16} />
+              <span className="capitalize">{typeFilter === 'all' ? 'All Types' : typeFilter}</span>
             </div>
-            <ChevronDown size={16} className={`text-text-secondary transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-          </GlassCard>
+            <ChevronDown size={14} className={`transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
 
           <AnimatePresence>
             {isDropdownOpen && (
@@ -131,7 +176,7 @@ export default function CompanyLogs() {
         </div>
       </div>
 
-      <GlassCard className="overflow-hidden p-0">
+      <div className="bg-bg-secondary rounded-xl shadow-sm border border-border-light overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-text-secondary">
             <Activity className="animate-pulse mb-4 text-brand-caramel" size={32} />
@@ -143,30 +188,76 @@ export default function CompanyLogs() {
             <p className="text-lg">No logs found matching your criteria.</p>
           </div>
         ) : (
-          <div className="divide-y divide-border-light/50">
-            {filteredLogs.map((log) => (
-              <div key={log.id} className="p-4 hover:bg-bg-primary/30 transition-colors flex gap-4">
-                <div className={`mt-1 w-10 h-10 rounded-full flex items-center justify-center border shrink-0 ${getLogBg(log.type)}`}>
+          <div>
+            {paginatedLogs.map((log) => (
+              <div key={log.id} className="relative flex items-start gap-4 p-5 px-6 border-b border-border-light hover:bg-bg-primary/5 transition-colors last:border-b-0 group">
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${getIconBg(log.type)}`}>
                   {getLogIcon(log.type)}
                 </div>
+
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                    <h4 className="text-sm font-bold text-text-primary truncate">{log.action}</h4>
-                    <span className="text-xs text-text-secondary flex items-center gap-1 shrink-0">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-1.5 gap-1 sm:gap-0">
+                    <h4 className="text-[15px] font-bold text-text-primary">{log.action}</h4>
+                    <span className="text-xs text-text-secondary flex items-center gap-1.5 whitespace-nowrap">
                       <Clock size={12} />
                       {new Date(log.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-sm text-text-secondary mb-2">{log.details}</p>
-                  <p className="text-xs font-medium text-text-muted">
-                    User: <span className="text-text-primary">{log.user_name}</span>
-                  </p>
+                  
+                  <div className="text-[13px] text-text-secondary mb-2 leading-relaxed">
+                    {log.details}
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <span className="flex items-center gap-1.5 text-xs text-text-secondary">
+                      <div className="text-red-600"><User size={12} /></div>
+                      User: <strong className="text-text-primary font-semibold">{log.user_name}</strong>
+                    </span>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${getBadgeBg(log.type)}`}>
+                      {log.type}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </GlassCard>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="w-9 h-9 rounded-full border-none bg-transparent text-gray-500 text-[18px] flex items-center justify-center cursor-pointer hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          {getPageNumbers().map((page, i) => (
+            page === '...' ? (
+              <span key={`ellipsis-${i}`} className="text-gray-400 px-1">...</span>
+            ) : (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-9 h-9 rounded-full border-none flex items-center justify-center text-[14px] font-[600] cursor-pointer transition-all ${currentPage === page ? 'bg-red-600 text-white shadow-[0_4px_12px_rgba(220,38,38,0.3)]' : 'bg-transparent text-gray-500 hover:bg-gray-100'}`}
+              >
+                {page}
+              </button>
+            )
+          ))}
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="w-9 h-9 rounded-full border-none bg-transparent text-gray-500 text-[18px] flex items-center justify-center cursor-pointer hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

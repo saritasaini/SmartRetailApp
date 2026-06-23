@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { useCartStore } from './useCartStore';
 
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -9,6 +10,9 @@ export const useAuthStore = create((set, get) => ({
   loading: true,
 
   impersonateCustomer: (customerProfile) => {
+    // Clear cart before switching to prevent leakage
+    useCartStore.getState().clearCart();
+
     set((state) => {
       const originalUser = state.originalAdminUser || state.user;
       const originalProfile = state.originalAdminProfile || state.profile;
@@ -25,9 +29,15 @@ export const useAuthStore = create((set, get) => ({
         profile: customerProfile
       };
     });
+    
+    // Fetch cart for the newly impersonated user
+    useCartStore.getState().fetchCart();
   },
 
   stopImpersonating: () => {
+    // Clear cart on return to admin
+    useCartStore.getState().clearCart();
+
     localStorage.removeItem('impersonated_customer');
     localStorage.removeItem('original_admin_user');
     localStorage.removeItem('original_admin_profile');
@@ -63,6 +73,7 @@ export const useAuthStore = create((set, get) => ({
           profile: impersonatedCustomer,
           loading: false
         });
+        useCartStore.getState().fetchCart();
       } else if (session?.user && !error) {
         await get().fetchProfile(session.user);
       } else {
@@ -103,6 +114,9 @@ export const useAuthStore = create((set, get) => ({
       
       const fullUser = typeof authUser === 'object' ? authUser : { id: userId };
       set({ user: fullUser, profile: data, loading: false });
+      
+      // Fetch cart for logged in user
+      useCartStore.getState().fetchCart();
     } catch (error) {
       console.error('Error fetching profile:', error);
       set({ user: null, profile: null, loading: false });
@@ -128,6 +142,7 @@ export const useAuthStore = create((set, get) => ({
   },
 
   signOut: async () => {
+    useCartStore.getState().clearCart();
     await supabase.auth.signOut();
   }
 }));

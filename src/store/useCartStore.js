@@ -1,41 +1,138 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from './useAuthStore';
 
 export const useCartStore = create((set, get) => ({
   items: [],
+  loading: false,
   
-  addItem: (product, quantity) => {
-    set((state) => {
-      const existing = state.items.find((i) => i.product.id === product.id);
-      if (existing) {
-        return {
-          items: state.items.map((i) => 
-            i.product.id === product.id ? { ...i, quantity: i.quantity + quantity } : i
-          )
-        };
+  fetchCart: async () => {
+    const user = useAuthStore.getState().user;
+    if (!user) return;
+    
+    set({ loading: true });
+    try {
+      const { data, error } = await supabase
+        .from('cart_items')
+        .select(`
+          id,
+          quantity,
+          products (*)
+        `)
+        .eq('customer_id', user.id);
+        
+      if (!error && data) {
+        // Map to existing format: { product, quantity, cartItemId }
+        const items = data.map(item => ({
+          cartItemId: item.id,
+          product: item.products,
+          quantity: item.quantity
+        }));
+        set({ items, loading: false });
+      } else {
+        set({ loading: false });
       }
-      return { items: [...state.items, { product, quantity }] };
+    } catch (err) {
+      console.error("Error fetching cart:", err);
+      set({ loading: false });
+    }
+  },
+
+  addItem: async (product, quantity) => {
+    const user = useAuthStore.getState().user;
+    const items = get().items;
+    const existing = items.find((i) => i.product.id === product.id);
+
+    // Optimistic update
+    if (existing) {
+      const newQuantity = existing.quantity + quantity;
+      set({
+        items: items.map((i) => 
+          i.product.id === product.id ? { ...i, quantity: newQuantity } : i
+        )
+      });
+      
+      if (user && existing.cartItemId) {
+        await supabase
+          .from('cart_items')
+          .update({ quantity: newQuantity })
+          .eq('id', existing.cartItemId);
+      }
+    } else {
+      const tempId = 'temp-' + Date.now();
+      set({ items: [...items, { cartItemId: tempId, product, quantity }] });
+      
+      if (user) {
+        const { data, error } = await supabase
+          .from('cart_items')
+          .insert({
+            customer_id: user.id,
+            product_id: product.id,
+            quantity: quantity
+          })
+          .select('id')
+          .single();
+          
+        if (!error && data) {
+          // Update tempId with real id
+          set((state) => ({
+            items: state.items.map((i) => 
+              i.cartItemId === tempId ? { ...i, cartItemId: data.id } : i
+            )
+          }));
+        }
+      }
+    }
+  },
+  
+  removeItem: async (productId) => {
+    const user = useAuthStore.getState().user;
+    const items = get().items;
+    const existing = items.find((i) => i.product.id === productId);
+    
+    set({
+      items: items.filter((i) => i.product.id !== productId)
     });
+    
+    if (user && existing && existing.cartItemId && !String(existing.cartItemId).startsWith('temp-')) {
+      await supabase.from('cart_items').delete().eq('id', existing.cartItemId);
+    }
   },
   
-  removeItem: (productId) => {
-    set((state) => ({
-      items: state.items.filter((i) => i.product.id !== productId)
-    }));
-  },
-  
-  updateQuantity: (productId, quantity) => {
+  updateQuantity: async (productId, quantity) => {
     if (quantity <= 0) {
       get().removeItem(productId);
       return;
     }
-    set((state) => ({
-      items: state.items.map((i) => 
+    
+    const user = useAuthStore.getState().user;
+    const items = get().items;
+    const existing = items.find((i) => i.product.id === productId);
+    
+    set({
+      items: items.map((i) => 
         i.product.id === productId ? { ...i, quantity } : i
       )
-    }));
+    });
+    
+    if (user && existing && existing.cartItemId && !String(existing.cartItemId).startsWith('temp-')) {
+      await supabase.from('cart_items').update({ quantity }).eq('id', existing.cartItemId);
+    }
   },
   
-  clearCart: () => set({ items: [] }),
+  clearCart: () => {
+    // We only clear the local state, not the DB. This is used on logout.
+    set({ items: [] });
+  },
+
+  emptyCartDB: async () => {
+    // Clear both local state and DB (e.g. after order placement)
+    const user = useAuthStore.getState().user;
+    set({ items: [] });
+    if (user) {
+      await supabase.from('cart_items').delete().eq('customer_id', user.id);
+    }
+  },
   
   getTotal: () => {
     const items = get().items;
