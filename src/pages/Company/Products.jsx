@@ -30,6 +30,8 @@ export default function ProductManagement() {
   const [isModalOpen, setIsModalOpen] = useState(() => new URLSearchParams(location.search).get('action') === 'add_product');
   const [viewingProduct, setViewingProduct] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [newCategoryNames, setNewCategoryNames] = useState('');
   const [savingCategory, setSavingCategory] = useState(false);
@@ -311,27 +313,58 @@ export default function ProductManagement() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      try {
-        const product = products.find(p => p.id === id);
-        await supabase.from('products').delete().eq('id', id);
+  const triggerDelete = (id) => {
+    setProductToDelete(id);
+    setDeleteError('');
+  };
+
+  const confirmDelete = async (isHardDelete = false) => {
+    if (!productToDelete) return;
+    setDeleteError('');
+    
+    try {
+      const product = products.find(p => p.id === productToDelete);
+      
+      if (isHardDelete) {
+        const { error } = await supabase.from('products').delete().eq('id', productToDelete);
+        if (error) {
+          // 23503 is postgres error code for foreign key violation
+          if (error.code === '23503') {
+            throw new Error("Cannot permanently delete: This product has existing customer orders. Please use 'Archive' instead.");
+          }
+          throw error;
+        }
 
         if (product) {
           await logCompanyAction({
             companyId: useAuthStore.getState().user.id,
             action: 'Product Deleted',
-            details: `Deleted product "${product.name}".`,
+            details: `Permanently deleted product "${product.name}".`,
             userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
             type: 'error'
           });
         }
+      } else {
+        const { error } = await supabase.from('products').update({ is_active: false }).eq('id', productToDelete);
+        if (error) throw error;
 
-        fetchData();
-        if (viewingProduct?.id === id) setViewingProduct(null);
-      } catch (error) {
-        console.error('Error deleting product:', error);
+        if (product) {
+          await logCompanyAction({
+            companyId: useAuthStore.getState().user.id,
+            action: 'Product Archived',
+            details: `Archived product "${product.name}" to preserve order history.`,
+            userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
+            type: 'warning'
+          });
+        }
       }
+
+      fetchData();
+      if (viewingProduct?.id === productToDelete) setViewingProduct(null);
+      setProductToDelete(null);
+    } catch (error) {
+      console.error('Error with product deletion:', error);
+      setDeleteError(error.message);
     }
   };
 
@@ -644,7 +677,7 @@ export default function ProductManagement() {
                       <Pen size={13} fill="currentColor" strokeWidth={1} />
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
+                      onClick={(e) => { e.stopPropagation(); triggerDelete(product.id); }}
                       className="w-8 h-8 rounded-full border border-gray-200 bg-white text-gray-500 flex items-center justify-center transition-all duration-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
                       title="Delete Product"
                     >
@@ -1026,6 +1059,70 @@ export default function ProductManagement() {
                   </div>
                 </form>
               </GlassCard>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {productToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full border border-gray-100"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4 text-red-500">
+                  <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-[20px] font-[800] text-gray-800 mb-2">Delete Product</h3>
+                <p className="text-[14px] text-gray-500 mb-4">
+                  How would you like to remove this product?
+                </p>
+
+                {deleteError && (
+                  <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-[13px] font-[500] text-left w-full">
+                    {deleteError}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3 w-full mb-3">
+                  <button
+                    onClick={() => confirmDelete(false)}
+                    className="w-full py-3 px-4 rounded-xl text-[14px] font-[600] text-white bg-amber-500 hover:bg-amber-600 shadow-sm transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Ban size={16} /> Archive (Recommended)
+                  </button>
+                  <p className="text-[11px] text-gray-400 mt-[-6px] mb-2 leading-tight">
+                    Hides from catalog but keeps historical order invoices safe.
+                  </p>
+
+                  <button
+                    onClick={() => confirmDelete(true)}
+                    className="w-full py-3 px-4 rounded-xl text-[14px] font-[600] text-white bg-red-600 hover:bg-red-700 shadow-sm transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Trash2 size={16} /> Permanent Delete
+                  </button>
+                  <p className="text-[11px] text-gray-400 mt-[-6px] mb-2 leading-tight">
+                    Deletes permanently. Will fail if customers have already ordered it.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setProductToDelete(null)}
+                  className="w-full py-3 px-4 rounded-xl text-[14px] font-[600] text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

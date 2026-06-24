@@ -61,7 +61,7 @@ CREATE OR REPLACE FUNCTION update_stock_on_order()
 RETURNS TRIGGER AS $$
 BEGIN
   UPDATE public.products
-  SET stock_quantity = GREATEST(0, stock_quantity - NEW.quantity)
+  SET stock_quantity = stock_quantity - NEW.quantity
   WHERE id = NEW.product_id;
   RETURN NEW;
 END;
@@ -180,3 +180,9 @@ ALTER TABLE public.profiles ADD CONSTRAINT profiles_company_id_fkey FOREIGN KEY 
 -- Ensure order_items cascade when an order is deleted
 ALTER TABLE public.order_items DROP CONSTRAINT IF EXISTS order_items_order_id_fkey;
 ALTER TABLE public.order_items ADD CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE;
+
+-- Fix Point 1: Duplicate Phone Protection
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_phone_key UNIQUE (phone);
+
+-- Fix Point 4: Product Soft Delete
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
