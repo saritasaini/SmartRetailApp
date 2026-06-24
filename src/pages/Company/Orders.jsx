@@ -23,7 +23,7 @@ function OrderStatusPath({ order, onUpdateStatus }) {
         <div className="w-full bg-red-50 text-red-600 rounded-lg p-3 text-center font-[600] text-[14px] border border-red-200">
            This order has been cancelled.
         </div>
-        <div className="flex justify-end mt-4">
+        <div className="flex justify-center sm:justify-end mt-4">
             <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-[700] bg-red-100 text-red-700">
                 <span className="w-2 h-2 rounded-full bg-red-600"></span> Cancelled
             </span>
@@ -72,15 +72,15 @@ function OrderStatusPath({ order, onUpdateStatus }) {
             })}
         </div>
 
-        <div className="flex justify-between items-center mt-6">
-            <div>
+        <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 mt-6">
+            <div className="flex-1 flex justify-center sm:justify-start">
                {currentIndex >= 0 && currentIndex < stages.length - 1 && (
-                  <button onClick={() => onUpdateStatus(stages[currentIndex + 1].id)} className="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors rounded-lg text-[13px] font-[600] flex items-center gap-2">
+                  <button onClick={() => onUpdateStatus(stages[currentIndex + 1].id)} className="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors rounded-lg text-[13px] font-[600] flex items-center gap-2">
                       Mark {stages[currentIndex + 1].label} <ChevronRight size={14} />
                   </button>
                )}
             </div>
-            <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-[700] ${
+            <span className={`self-center sm:self-auto inline-flex items-center justify-center whitespace-nowrap gap-1.5 px-4 py-2 rounded-full text-[13px] font-[700] ${
                 currentIndex === stages.length - 1 ? 'bg-emerald-100 text-emerald-700' : 
                 currentIndex === 0 ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
             }`}>
@@ -311,14 +311,14 @@ export default function OrderManagement() {
       </div>
 
       {/* Order Tabs */}
-      <div className="flex gap-2 mb-6 flex-wrap">
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
         {['all', 'pending', 'confirmed', 'out_for_delivery', 'delivered', 'cancelled'].map(status => {
           const count = orders.filter(o => status === 'all' ? true : o.status === status).length;
           return (
             <button
                 key={status}
                 onClick={() => { setStatusFilter(status); setCurrentPage(1); }}
-                className={`px-5 py-2.5 border rounded-xl text-[14px] font-[500] transition-all duration-200 flex items-center gap-2 ${
+                className={`px-5 py-2.5 border rounded-xl text-[14px] font-[500] transition-all duration-200 flex items-center gap-2 whitespace-nowrap shrink-0 ${
                 statusFilter === status 
                     ? 'bg-red-50 text-red-600 border-red-600 font-[600]' 
                     : 'bg-white text-gray-500 border-gray-200 hover:border-red-200 hover:shadow-sm'

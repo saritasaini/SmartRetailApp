@@ -303,7 +303,7 @@ export default function CompanyDashboard() {
           </h1>
           <p className="text-[13px] text-gray-500 font-medium">Here's what's happening with your business today.</p>
         </div>
-        <div className="flex items-center justify-end gap-2 lg:gap-3 flex-nowrap shrink-0 w-full md:w-auto">
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-end gap-2 lg:gap-3 shrink-0 w-full md:w-auto">
           {[
             { to: '/company/products?action=add_product', bg: 'bg-red-500 hover:bg-red-600 shadow-red-200', Icon: Plus, label: 'Add Product' },
             { to: '/company/customers', bg: 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200', Icon: UserPlus, label: 'Approve Retailers' },

@@ -624,7 +624,7 @@ export default function ProductManagement() {
                   
                   <span className="hidden md:block text-[14px] text-gray-400 font-[500]">{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</span>
                   
-                  <div className="flex items-center gap-3.5 mb-3 md:mb-0 cursor-pointer" onClick={() => setViewingProduct(product)}>
+                  <div className="flex items-center gap-3.5 mb-3 md:mb-0 cursor-pointer pr-16 md:pr-0" onClick={() => setViewingProduct(product)}>
                     <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 overflow-hidden border border-gray-200 shrink-0">
                       {product.image_url ? (
                         <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
@@ -668,7 +668,7 @@ export default function ProductManagement() {
                     </button>
                   </div>
 
-                  <div className="flex gap-2 justify-end">
+                  <div className="absolute top-4 right-4 md:relative md:top-auto md:right-auto flex gap-2 justify-end">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleOpenModal(product); }}
                       className="w-8 h-8 rounded-full border border-gray-200 bg-white text-gray-500 flex items-center justify-center transition-all duration-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"

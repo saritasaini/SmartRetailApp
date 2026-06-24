@@ -407,6 +407,15 @@
         @apply bg-brand-caramel-dark;
     }
 
+    /* Hide scrollbar utility */
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
     /* Settings Page Styles */
     .settings-tab { transition: all 0.3s ease; position: relative; cursor: pointer; }
     .settings-tab.active { color: #dc2626; background: #fef2f2; }

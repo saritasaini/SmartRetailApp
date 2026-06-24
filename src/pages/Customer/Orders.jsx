@@ -107,7 +107,7 @@ export default function MyOrders() {
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                 statusFilter === status 
                   ? 'bg-brand-caramel text-white shadow-md' 
                   : 'bg-bg-secondary text-text-secondary hover:bg-bg-primary border border-border-light'

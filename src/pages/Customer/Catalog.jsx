@@ -207,15 +207,15 @@ export default function ProductCatalog() {
                   </p>
                 )}
                 
-                <div className="mt-auto pt-3 border-t border-border-light/50 flex items-center justify-between">
-                  <span className="text-[9px] text-text-secondary uppercase font-medium">
+                <div className="mt-auto pt-3 border-t border-border-light/50 flex items-center justify-between gap-1">
+                  <span className="text-[9px] text-text-secondary uppercase font-medium whitespace-nowrap truncate">
                     Per {product.unit}
                   </span>
                   {cartItem ? (
-                    <div className="flex items-center gap-1.5 bg-bg-tertiary rounded-md px-1 py-0.5 border border-border-light shadow-sm">
+                    <div className="flex items-center gap-1 bg-bg-tertiary rounded-md px-1 py-0.5 border border-border-light shadow-sm shrink-0">
                       <button 
                         onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
-                        className="p-1 hover:bg-bg-primary hover:text-brand-caramel rounded text-text-secondary transition-colors"
+                        className="p-0.5 hover:bg-bg-primary hover:text-brand-caramel rounded text-text-secondary transition-colors shrink-0"
                       >
                         <Minus size={14} />
                       </button>
@@ -223,29 +223,29 @@ export default function ProductCatalog() {
                       <button 
                         onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
                         disabled={cartItem.quantity >= product.stock_quantity}
-                        className={`p-1 rounded transition-colors ${cartItem.quantity >= product.stock_quantity ? 'opacity-40 cursor-not-allowed' : 'hover:bg-bg-primary hover:text-brand-caramel text-text-secondary'}`}
+                        className={`p-0.5 rounded transition-colors shrink-0 ${cartItem.quantity >= product.stock_quantity ? 'opacity-40 cursor-not-allowed' : 'hover:bg-bg-primary hover:text-brand-caramel text-text-secondary'}`}
                       >
                         <Plus size={14} />
                       </button>
                     </div>
                   ) : (
-                    <Button 
+                    <button 
                       onClick={() => handleAddToCart(product)}
                       disabled={isOutOfStock || addingToCart === product.id}
-                      className={`py-1 px-3 text-xs gap-1 shadow-sm ${isOutOfStock ? 'bg-gray-400 border-gray-400 cursor-not-allowed' : ''}`}
+                      className={`flex justify-center items-center gap-1 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-lg py-1.5 px-2.5 text-xs shadow-sm shrink-0 ${isOutOfStock ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-gradient-to-br from-brand-caramel to-brand-caramel-light text-white shadow-[0_4px_16px_rgba(220,38,38,0.25)] hover:from-brand-caramel-dark hover:to-brand-caramel'}`}
                     >
                       {addingToCart === product.id ? (
                         <>
-                          <Loader2 size={14} className="animate-spin" />
+                          <Loader2 size={12} className="animate-spin" />
                           Added
                         </>
                       ) : (
                         <>
-                          <Plus size={14} />
+                          <Plus size={12} strokeWidth={3} />
                           Add
                         </>
                       )}
-                    </Button>
+                    </button>
                   )}
                 </div>
               </div>

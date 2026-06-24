@@ -58,6 +58,27 @@ const ProtectedRoute = ({ children, allowedRole }) => {
     return <Navigate to="/login" replace />;
   }
 
+  // Deep Security Fix 1: Block deactivated users from ghost sessions
+  if (profile && !profile.is_approved && profile.role !== 'super_admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-primary p-4 text-center">
+        <div className="max-w-md bg-bg-secondary border border-border-light rounded-xl p-8 shadow-xl animate-in fade-in zoom-in duration-300">
+          <div className="w-16 h-16 bg-brand-berry/10 text-brand-berry rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          </div>
+          <h2 className="text-2xl font-bold text-text-primary mb-2">Account Inactive</h2>
+          <p className="text-text-secondary mb-8">Your account is either pending approval or has been deactivated by the company admin.</p>
+          <button 
+            onClick={() => { useAuthStore.getState().signOut(); window.location.href='/login'; }}
+            className="px-6 py-3 bg-gradient-to-r from-brand-berry to-red-700 hover:from-red-600 hover:to-red-800 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg w-full"
+          >
+            Log Out & Return
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (profile && profile.role !== allowedRole) {
     if (profile.role === 'super_admin') return <Navigate to="/admin" replace />;
     return <Navigate to={profile.role === 'company' ? '/company' : '/customer'} replace />;

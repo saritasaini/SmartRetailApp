@@ -132,14 +132,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Reject pending UPI payments if order is cancelled
+-- Reject pending and verified payments if order is cancelled
 CREATE OR REPLACE FUNCTION reject_payment_on_order_cancel()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.status = 'cancelled' AND OLD.status != 'cancelled' THEN
     UPDATE public.payments 
-    SET status = 'rejected', notes = notes || ' (Order Cancelled)' 
-    WHERE order_id = NEW.id AND status = 'pending';
+    SET status = 'rejected', notes = COALESCE(notes, '') || ' (Order Cancelled)' 
+    WHERE order_id = NEW.id AND status IN ('pending', 'verified');
   END IF;
   RETURN NEW;
 END;

@@ -41,7 +41,7 @@ export default function CompanyLayout() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 text-gray-800" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="flex h-[100dvh] overflow-hidden bg-gray-50 text-gray-800" style={{ fontFamily: 'Inter, sans-serif' }}>
       
       {/* Desktop Sidebar (hidden on mobile) */}
       <aside className="w-64 bg-white shadow-xl z-20 hidden lg:flex flex-col slide-in-left fixed inset-y-0 left-0" style={{ animationDelay: '0.1s' }}>
@@ -95,7 +95,7 @@ export default function CompanyLayout() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-64 pb-16 lg:pb-0">
+      <main className="flex-1 flex flex-col h-full overflow-hidden lg:pl-64 pb-16 lg:pb-0">
         {/* Mobile Header */}
         <header className="lg:hidden bg-white/80 backdrop-blur-xl border-b border-gray-100 p-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
           <div className="flex items-center gap-3">

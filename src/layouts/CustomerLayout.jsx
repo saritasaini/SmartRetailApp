@@ -62,7 +62,7 @@ export default function CustomerLayout() {
   };
 
   return (
-    <div className={`min-h-screen w-full overflow-x-hidden flex flex-col bg-bg-primary pb-24 lg:pb-0 ${originalAdminProfile ? 'pt-10' : ''}`}>
+    <div className={`min-h-screen w-full flex flex-col bg-bg-primary pb-24 lg:pb-0 ${originalAdminProfile ? 'pt-10' : ''}`}>
       {originalAdminProfile && (
         <div className="fixed top-0 left-0 right-0 bg-brand-berry text-white px-4 py-2 text-sm font-bold flex justify-between items-center z-[9999] shadow-lg">
           <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span> Viewing as Customer</span>
@@ -79,7 +79,7 @@ export default function CustomerLayout() {
       )}
       
       {/* Desktop Header */}
-      <header className="hidden lg:flex items-center justify-between px-8 py-4 glass-card rounded-none border-x-0 border-t-0 sticky top-0 z-30 mt-0">
+      <header className={`hidden lg:flex items-center justify-between px-8 py-4 glass-card rounded-none border-x-0 border-t-0 sticky z-30 mt-0 ${originalAdminProfile ? 'top-10' : 'top-0'}`}>
         <div className="flex items-center gap-4">
           <IceCream className="text-brand-caramel" size={32} />
           <h1 className="text-2xl font-bold text-gradient tracking-tight">{companyName}</h1>
@@ -133,7 +133,7 @@ export default function CustomerLayout() {
       </header>
 
       {/* Mobile Header */}
-      <header className="lg:hidden flex items-center justify-between px-4 py-4 glass-card rounded-none border-x-0 border-t-0 sticky top-0 z-30">
+      <header className={`lg:hidden flex items-center justify-between px-4 py-4 glass-card rounded-none border-x-0 border-t-0 sticky z-30 ${originalAdminProfile ? 'top-[36px]' : 'top-0'}`}>
         <div className="flex items-center gap-2">
           <IceCream className="text-brand-caramel" size={24} />
           <h1 className="text-lg font-bold text-gradient">{companyName}</h1>

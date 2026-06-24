@@ -17,11 +17,6 @@ export const useAuthStore = create((set, get) => ({
       const originalUser = state.originalAdminUser || state.user;
       const originalProfile = state.originalAdminProfile || state.profile;
       
-      // Save to localStorage so it survives refresh
-      localStorage.setItem('impersonated_customer', JSON.stringify(customerProfile));
-      localStorage.setItem('original_admin_user', JSON.stringify(originalUser));
-      localStorage.setItem('original_admin_profile', JSON.stringify(originalProfile));
-
       return {
         originalAdminUser: originalUser,
         originalAdminProfile: originalProfile,
@@ -37,10 +32,6 @@ export const useAuthStore = create((set, get) => ({
   stopImpersonating: () => {
     // Clear cart on return to admin
     useCartStore.getState().clearCart();
-
-    localStorage.removeItem('impersonated_customer');
-    localStorage.removeItem('original_admin_user');
-    localStorage.removeItem('original_admin_profile');
     
     set((state) => {
       if (state.originalAdminProfile) {
@@ -59,22 +50,7 @@ export const useAuthStore = create((set, get) => ({
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       
-      // Check for persisted impersonation
-      const impersonatedCustomerJson = localStorage.getItem('impersonated_customer');
-      if (impersonatedCustomerJson && session?.user) {
-        const impersonatedCustomer = JSON.parse(impersonatedCustomerJson);
-        const originalUser = JSON.parse(localStorage.getItem('original_admin_user'));
-        const originalProfile = JSON.parse(localStorage.getItem('original_admin_profile'));
-        
-        set({
-          originalAdminUser: originalUser,
-          originalAdminProfile: originalProfile,
-          user: { id: impersonatedCustomer.id, email: impersonatedCustomer.email },
-          profile: impersonatedCustomer,
-          loading: false
-        });
-        useCartStore.getState().fetchCart();
-      } else if (session?.user && !error) {
+      if (session?.user && !error) {
         await get().fetchProfile(session.user);
       } else {
         set({ loading: false });

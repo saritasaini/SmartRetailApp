@@ -242,10 +242,10 @@ export default function CustomerDashboard() {
       {/* WhatsApp Floating Action Button */}
       {companyPhone && (
         <a 
-          href={`https://wa.me/91${companyPhone.replace(/\\D/g, '')}`} 
+          href={`https://wa.me/91${companyPhone.replace(/\D/g, '')}`} 
           target="_blank" 
           rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 z-50 bg-green-500 text-white p-4 rounded-full shadow-[0_10px_25px_rgba(34,197,94,0.4)] hover:shadow-[0_15px_30px_rgba(34,197,94,0.5)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center group"
+          className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 bg-green-500 text-white p-4 rounded-full shadow-[0_10px_25px_rgba(34,197,94,0.4)] hover:shadow-[0_15px_30px_rgba(34,197,94,0.5)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center group"
           title="Chat with Support"
         >
           <MessageCircle size={28} />
