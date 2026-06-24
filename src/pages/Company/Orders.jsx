@@ -231,7 +231,7 @@ export default function OrderManagement() {
       
       // If data is empty, it means RLS blocked the update!
       if (!data || data.length === 0) {
-        throw new Error("Aapke paas orders update karne ki permission nahi hai. Please SQL Editor me 'FOR ALL' wali policy run karein.");
+        throw new Error("You do not have permission to update this order. Please contact the administrator.");
       }
 
       // Log the action
@@ -414,7 +414,7 @@ export default function OrderManagement() {
                             </div>
                             <div className="text-[14px] text-gray-800 font-[500] mt-3">
                                 Items: <span className="text-gray-500 font-[400] leading-relaxed">
-                                  {order.order_items?.slice(0, 3).map(item => `${item.quantity}x ${item.products?.name}`).join(', ')}
+                                  {order.order_items?.slice(0, 3).map(item => `${item.quantity}x ${item.products?.name || 'Deleted Product'}`).join(', ')}
                                   {order.order_items?.length > 3 && ` + ${order.order_items.length - 3} more`}
                                 </span>
                             </div>

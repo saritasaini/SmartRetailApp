@@ -39,6 +39,7 @@ export default function CustomerManagement() {
   const [showPassword, setShowPassword] = useState(false);
   const [newPhoneError, setNewPhoneError] = useState('');
   const [editPhoneError, setEditPhoneError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -95,6 +96,26 @@ export default function CustomerManagement() {
 
   const handleAddCustomer = async (e) => {
     e.preventDefault();
+    
+    let errors = {};
+    if (!newCustomer.email?.trim()) errors.email = 'Email is required';
+    if (!newCustomer.password?.trim()) errors.password = 'Password is required';
+    else if (newCustomer.password.length < 6) errors.password = 'Password must be at least 6 characters';
+    
+    if (!newCustomer.shop_name?.trim()) errors.shop_name = 'Shop name is required';
+    if (!newCustomer.owner_name?.trim()) errors.owner_name = 'Owner name is required';
+    
+    if (!newCustomer.phone?.trim()) errors.phone = 'Phone number is required';
+    else if (newCustomer.phone.replace(/\D/g, '').length !== 10) errors.phone = 'Valid 10-digit phone number required';
+    
+    if (!newCustomer.address?.trim()) errors.address = 'Address is required';
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    
+    setFieldErrors({});
     setIsAdding(true);
     try {
       // Create a temp supabase client that DOES NOT persist session to avoid logging out the admin
@@ -139,6 +160,7 @@ export default function CustomerManagement() {
 
       setIsAddModalOpen(false);
       setNewCustomer({ email: '', password: '', shop_name: '', owner_name: '', phone: '', address: '' });
+      setFieldErrors({});
       
       await logCompanyAction({
         companyId: useAuthStore.getState().user.id,
@@ -312,7 +334,7 @@ export default function CustomerManagement() {
         </div>
         <div className="shrink-0 flex items-center gap-2">
           <button 
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => { setIsAddModalOpen(true); setFieldErrors({}); setNewPhoneError(''); }}
             className="bg-gradient-to-br from-red-600 to-red-800 text-white border-none py-3 px-6 rounded-xl text-[14px] font-[600] cursor-pointer flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(220,38,38,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(220,38,38,0.4)] w-full md:w-auto"
           >
             <UserPlus size={16} strokeWidth={2.5} /> Add New Customer
@@ -640,23 +662,21 @@ export default function CustomerManagement() {
                   <label className="block text-sm font-medium text-text-secondary mb-1">Email</label>
                   <input
                     type="email"
-                    required
                     value={newCustomer.email}
-                    onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
-                    className="w-full bg-bg-primary border border-border-light rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel"
+                    onChange={(e) => { setNewCustomer({...newCustomer, email: e.target.value}); setFieldErrors({...fieldErrors, email: null}); }}
+                    className={`w-full bg-bg-primary border ${fieldErrors.email ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}
                     placeholder="customer@email.com"
                   />
+                  {fieldErrors.email && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.email}</div>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">Password</label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
-                      required
-                      minLength={6}
                       value={newCustomer.password}
-                      onChange={(e) => setNewCustomer({...newCustomer, password: e.target.value})}
-                      className="w-full bg-bg-primary border border-border-light rounded-lg px-4 py-2 pr-10 text-text-primary focus:outline-none focus:border-brand-caramel"
+                      onChange={(e) => { setNewCustomer({...newCustomer, password: e.target.value}); setFieldErrors({...fieldErrors, password: null}); }}
+                      className={`w-full bg-bg-primary border ${fieldErrors.password ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 pr-10 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}
                       placeholder="Min 6 chars"
                     />
                     <button
@@ -668,59 +688,62 @@ export default function CustomerManagement() {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  {fieldErrors.password && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.password}</div>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">Shop Name</label>
                   <input
                     type="text"
-                    required
                     value={newCustomer.shop_name}
-                    onChange={(e) => setNewCustomer({...newCustomer, shop_name: e.target.value})}
-                    className="w-full bg-bg-primary border border-border-light rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel"
+                    onChange={(e) => { setNewCustomer({...newCustomer, shop_name: e.target.value}); setFieldErrors({...fieldErrors, shop_name: null}); }}
+                    className={`w-full bg-bg-primary border ${fieldErrors.shop_name ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}
                     placeholder="e.g. Sharma Sweets"
                   />
+                  {fieldErrors.shop_name && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.shop_name}</div>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">Owner Name</label>
                   <input
                     type="text"
-                    required
                     value={newCustomer.owner_name}
-                    onChange={(e) => setNewCustomer({...newCustomer, owner_name: e.target.value})}
-                    className="w-full bg-bg-primary border border-border-light rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel"
+                    onChange={(e) => { setNewCustomer({...newCustomer, owner_name: e.target.value}); setFieldErrors({...fieldErrors, owner_name: null}); }}
+                    className={`w-full bg-bg-primary border ${fieldErrors.owner_name ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}
                     placeholder="Owner's full name"
                   />
+                  {fieldErrors.owner_name && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.owner_name}</div>}
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-text-secondary mb-1">Phone Number</label>
                   <input
                     type="tel"
-                    required
                     value={newCustomer.phone}
-                    onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
+                    onChange={(e) => {
+                      setNewCustomer({...newCustomer, phone: e.target.value});
+                      setNewPhoneError('');
+                      setFieldErrors({...fieldErrors, phone: null});
+                    }}
                     onBlur={(e) => {
                       const val = e.target.value.replace(/\D/g, '');
                       if (val && val.length !== 10) {
-                        setNewPhoneError('Please enter a valid 10-digit phone number.');
+                        setFieldErrors(prev => ({...prev, phone: 'Please enter a valid 10-digit phone number.'}));
                       } else {
-                        setNewPhoneError('');
                         setNewCustomer(prev => ({ ...prev, phone: val }));
                       }
                     }}
-                    className={`w-full bg-bg-primary border ${newPhoneError ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel`}
+                    className={`w-full bg-bg-primary border ${fieldErrors.phone ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}
                     placeholder="10-digit number"
                   />
-                  {newPhoneError && <p className="text-red-500 text-xs mt-1">{newPhoneError}</p>}
+                  {fieldErrors.phone && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.phone}</div>}
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-text-secondary mb-1">Full Address</label>
                   <textarea
-                    required
                     value={newCustomer.address}
-                    onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
-                    className="w-full bg-bg-primary border border-border-light rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel resize-none h-20"
+                    onChange={(e) => { setNewCustomer({...newCustomer, address: e.target.value}); setFieldErrors({...fieldErrors, address: null}); }}
+                    className={`w-full bg-bg-primary border ${fieldErrors.address ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel resize-none h-20 transition-colors`}
                     placeholder="Shop address..."
                   ></textarea>
+                  {fieldErrors.address && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.address}</div>}
                 </div>
               </div>
 

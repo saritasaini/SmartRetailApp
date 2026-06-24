@@ -20,6 +20,11 @@ export default function CartPage() {
   const handlePlaceOrder = async () => {
     if (items.length === 0 || !user) return;
     
+    if (!profile?.company_id) {
+      setError('You are not linked to a valid company. Please contact support.');
+      return;
+    }
+
     if (paymentMode === 'upi' && !upiRef.trim()) {
       setError('Please enter your UPI Transaction ID (UTR)');
       return;
@@ -76,6 +81,10 @@ export default function CartPage() {
         });
         if (paymentError) {
           console.error("Warning: Failed to create payment record for UPI", paymentError);
+          // Rollback: delete the orphaned order record and items
+          await supabase.from('order_items').delete().eq('order_id', orderData.id);
+          await supabase.from('orders').delete().eq('id', orderData.id);
+          throw new Error('Failed to save payment details. Please try again.');
         }
       }
 

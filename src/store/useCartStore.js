@@ -23,7 +23,9 @@ export const useCartStore = create((set, get) => ({
         
       if (!error && data) {
         // Map to existing format: { product, quantity, cartItemId }
-        const items = data.map(item => ({
+        const items = data
+          .filter(item => item.products) // Fix: filter out null products
+          .map(item => ({
           cartItemId: item.id,
           product: item.products,
           quantity: item.quantity
@@ -41,7 +43,7 @@ export const useCartStore = create((set, get) => ({
   addItem: async (product, quantity) => {
     const user = useAuthStore.getState().user;
     const items = get().items;
-    const existing = items.find((i) => i.product.id === product.id);
+    const existing = items.find((i) => i.product?.id === product.id);
 
     // Optimistic update
     if (existing) {
@@ -88,10 +90,10 @@ export const useCartStore = create((set, get) => ({
   removeItem: async (productId) => {
     const user = useAuthStore.getState().user;
     const items = get().items;
-    const existing = items.find((i) => i.product.id === productId);
+    const existing = items.find((i) => i.product?.id === productId);
     
     set({
-      items: items.filter((i) => i.product.id !== productId)
+      items: items.filter((i) => i.product?.id !== productId)
     });
     
     if (user && existing && existing.cartItemId && !String(existing.cartItemId).startsWith('temp-')) {
@@ -107,11 +109,11 @@ export const useCartStore = create((set, get) => ({
     
     const user = useAuthStore.getState().user;
     const items = get().items;
-    const existing = items.find((i) => i.product.id === productId);
+    const existing = items.find((i) => i.product?.id === productId);
     
     set({
       items: items.map((i) => 
-        i.product.id === productId ? { ...i, quantity } : i
+        i.product?.id === productId ? { ...i, quantity } : i
       )
     });
     
@@ -136,6 +138,9 @@ export const useCartStore = create((set, get) => ({
   
   getTotal: () => {
     const items = get().items;
-    return items.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+    return items.reduce((total, item) => {
+      if (!item.product) return total;
+      return total + (item.product.price * item.quantity);
+    }, 0);
   }
 }));

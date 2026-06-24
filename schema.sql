@@ -150,3 +150,33 @@ CREATE TRIGGER trigger_reject_payment
 AFTER UPDATE ON public.orders
 FOR EACH ROW
 EXECUTE FUNCTION reject_payment_on_order_cancel();
+
+-- ==========================================
+-- UAT FIXES: Cascade Deletes & Constraints
+-- ==========================================
+
+-- Fix Point 3: Negative Price and Stock Validation
+ALTER TABLE public.products ADD CONSTRAINT products_price_check CHECK (price >= 0);
+ALTER TABLE public.products ADD CONSTRAINT products_stock_check CHECK (stock_quantity >= 0);
+
+-- Fix Point 2: Cascading Deletes for Company
+-- When a company is deleted from auth.users, automatically delete all related data
+
+ALTER TABLE public.products DROP CONSTRAINT IF EXISTS products_company_id_fkey;
+ALTER TABLE public.products ADD CONSTRAINT products_company_id_fkey FOREIGN KEY (company_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_company_id_fkey;
+ALTER TABLE public.orders ADD CONSTRAINT orders_company_id_fkey FOREIGN KEY (company_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+ALTER TABLE public.categories DROP CONSTRAINT IF EXISTS categories_company_id_fkey;
+ALTER TABLE public.categories ADD CONSTRAINT categories_company_id_fkey FOREIGN KEY (company_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+ALTER TABLE public.payments DROP CONSTRAINT IF EXISTS payments_company_id_fkey;
+ALTER TABLE public.payments ADD CONSTRAINT payments_company_id_fkey FOREIGN KEY (company_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_company_id_fkey;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_company_id_fkey FOREIGN KEY (company_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+-- Ensure order_items cascade when an order is deleted
+ALTER TABLE public.order_items DROP CONSTRAINT IF EXISTS order_items_order_id_fkey;
+ALTER TABLE public.order_items ADD CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE;

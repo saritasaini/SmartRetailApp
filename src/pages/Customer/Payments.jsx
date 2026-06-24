@@ -164,17 +164,21 @@ export default function CustomerPayments() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-text-secondary mb-1">Reference ID / UTR Number</label>
-                  <input
-                    type="text"
-                    required={newPayment.payment_method !== 'cash'}
-                    value={newPayment.reference_id}
-                    onChange={(e) => setNewPayment({...newPayment, reference_id: e.target.value})}
-                    className="w-full bg-bg-tertiary border border-border-light rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand-caramel"
-                    placeholder={newPayment.payment_method === 'cash' ? "Optional for cash" : "e.g. 123456789012"}
-                  />
-                </div>
+                {newPayment.payment_method !== 'cash' && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">
+                      Reference ID / UTR Number <span className="text-brand-caramel">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newPayment.reference_id}
+                      onChange={(e) => setNewPayment({...newPayment, reference_id: e.target.value})}
+                      className="w-full bg-bg-tertiary border border-border-light rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand-caramel"
+                      placeholder="e.g. 123456789012"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-text-secondary mb-1">Notes (Optional)</label>

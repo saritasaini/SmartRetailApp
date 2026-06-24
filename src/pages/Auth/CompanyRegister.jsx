@@ -73,9 +73,13 @@ export default function CompanyRegister() {
               .from('profiles')
               .update({ logo_url: publicUrlData.publicUrl })
               .eq('id', authData.user.id);
+          } else {
+             throw uploadError;
           }
         } catch (imgErr) {
           console.warn("Logo upload failed:", imgErr);
+          // Don't fail the whole registration, just show a warning
+          setError("Account created, but logo upload failed. You can update it later in Settings.");
         }
       }
 

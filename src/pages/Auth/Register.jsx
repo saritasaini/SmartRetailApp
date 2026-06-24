@@ -38,6 +38,18 @@ export default function Register() {
       if (!companyId) {
         throw new Error('Invalid registration link. A company ID is required.');
       }
+
+      // Check for duplicate phone number
+      const { data: existingPhone } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('phone', formData.phone)
+        .maybeSingle();
+        
+      if (existingPhone) {
+        throw new Error('This phone number is already registered. Please use a different number or log in.');
+      }
+
       const { email, password, ...metadata } = formData;
       const authData = await signUp(email, password, { ...metadata, company_id: companyId, role: 'customer' });
       

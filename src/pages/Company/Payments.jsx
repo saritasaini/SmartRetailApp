@@ -22,6 +22,7 @@ export default function PaymentManagement() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [newPayment, setNewPayment] = useState({
     customer_id: '',
     amount: '',
@@ -130,10 +131,30 @@ export default function PaymentManagement() {
 
   const handleManualPayment = async (e) => {
     e.preventDefault();
-    if (!newPayment.customer_id || !newPayment.amount) return;
+    
+    let errors = {};
+    if (!newPayment.customer_id) errors.customer_id = 'Please select a customer';
+    
+    if (!newPayment.amount) {
+      errors.amount = 'Amount is required';
+    } else if (Number(newPayment.amount) <= 0) {
+      errors.amount = 'Amount must be greater than 0';
+    }
+    
+    if (!newPayment.payment_method) errors.payment_method = 'Method is required';
+    
+    if (newPayment.payment_method !== 'cash' && !newPayment.reference_id?.trim()) {
+      errors.reference_id = 'Reference ID is required';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
 
     const user = useAuthStore.getState().user;
     
+    setFieldErrors({});
     setIsSubmitting(true);
     setErrorMsg('');
     try {
@@ -152,6 +173,7 @@ export default function PaymentManagement() {
 
       setIsAddModalOpen(false);
       setNewPayment({ customer_id: '', amount: '', payment_method: 'cash', reference_id: '', notes: '' });
+      setFieldErrors({});
       fetchPaymentsAndCustomers();
     } catch (error) {
       console.error('Error logging payment:', error);
@@ -214,7 +236,7 @@ export default function PaymentManagement() {
           <p className="text-text-secondary">Verify customer payments and log manual receipts.</p>
         </div>
         <button 
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => { setIsAddModalOpen(true); setFieldErrors({}); }}
           className="bg-gradient-to-br from-red-600 to-red-800 text-white border-none py-3 px-6 rounded-xl text-[14px] font-[600] cursor-pointer flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(220,38,38,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(220,38,38,0.4)] w-full md:w-auto"
         >
           <Plus size={16} strokeWidth={2.5} /> Add Payment
@@ -352,9 +374,27 @@ export default function PaymentManagement() {
                           <XCircle size={12} /> Rejected
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-honey px-2 py-1 bg-brand-honey/10 rounded-md">
-                          <Clock size={12} /> Pending
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-honey px-2 py-1 bg-brand-honey/10 rounded-md mb-1">
+                            <Clock size={12} /> Pending
+                          </span>
+                          <div className="flex gap-1 mt-1">
+                            <button
+                              onClick={() => updatePaymentStatus(payment.id, 'verified')}
+                              className="p-1 rounded bg-brand-pistachio/10 text-brand-pistachio hover:bg-brand-pistachio hover:text-white transition-colors"
+                              title="Verify Payment"
+                            >
+                              <CheckCircle size={14} />
+                            </button>
+                            <button
+                              onClick={() => updatePaymentStatus(payment.id, 'rejected')}
+                              className="p-1 rounded bg-brand-berry/10 text-brand-berry hover:bg-brand-berry hover:text-white transition-colors"
+                              title="Reject Payment"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -423,10 +463,9 @@ export default function PaymentManagement() {
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">Select Customer</label>
                 <select
-                  required
                   value={newPayment.customer_id}
-                  onChange={(e) => setNewPayment({...newPayment, customer_id: e.target.value})}
-                  className="w-full bg-bg-primary border border-border-light rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand-caramel"
+                  onChange={(e) => { setNewPayment({...newPayment, customer_id: e.target.value}); setFieldErrors({...fieldErrors, customer_id: null}); }}
+                  className={`w-full bg-bg-primary border ${fieldErrors.customer_id ? 'border-red-500' : 'border-border-light'} rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}
                 >
                   <option value="" disabled>-- Select Retailer --</option>
                   {customers.map(c => (
@@ -435,26 +474,26 @@ export default function PaymentManagement() {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.customer_id && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.customer_id}</div>}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">Amount (₹)</label>
                 <input
                   type="number"
-                  required
                   min="1"
                   value={newPayment.amount}
-                  onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
-                  className="w-full bg-bg-primary border border-border-light rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand-caramel"
+                  onChange={(e) => { setNewPayment({...newPayment, amount: e.target.value}); setFieldErrors({...fieldErrors, amount: null}); }}
+                  className={`w-full bg-bg-primary border ${fieldErrors.amount ? 'border-red-500' : 'border-border-light'} rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}
                   placeholder="e.g. 5000"
                 />
+                {fieldErrors.amount && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.amount}</div>}
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-text-secondary mb-1">Method</label>
                   <select
-                    required
                     value={newPayment.payment_method}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -463,13 +502,15 @@ export default function PaymentManagement() {
                         payment_method: val,
                         ...(val === 'cash' ? { reference_id: '' } : {})
                       });
+                      setFieldErrors({...fieldErrors, payment_method: null});
                     }}
-                    className="w-full bg-bg-primary border border-border-light rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand-caramel"
+                    className={`w-full bg-bg-primary border ${fieldErrors.payment_method ? 'border-red-500' : 'border-border-light'} rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}
                   >
                     <option value="cash">Cash</option>
                     <option value="upi">UPI / Online</option>
                     <option value="bank_transfer">Bank Transfer</option>
                   </select>
+                  {fieldErrors.payment_method && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.payment_method}</div>}
                 </div>
                 {newPayment.payment_method !== 'cash' && (
                   <div className="flex-1 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -478,12 +519,12 @@ export default function PaymentManagement() {
                     </label>
                     <input
                       type="text"
-                      required
                       value={newPayment.reference_id}
-                      onChange={(e) => setNewPayment({...newPayment, reference_id: e.target.value})}
-                      className="w-full bg-bg-primary border border-border-light rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand-caramel"
+                      onChange={(e) => { setNewPayment({...newPayment, reference_id: e.target.value}); setFieldErrors({...fieldErrors, reference_id: null}); }}
+                      className={`w-full bg-bg-primary border ${fieldErrors.reference_id ? 'border-red-500' : 'border-border-light'} rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}
                       placeholder="Enter UTR"
                     />
+                    {fieldErrors.reference_id && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.reference_id}</div>}
                   </div>
                 )}
               </div>

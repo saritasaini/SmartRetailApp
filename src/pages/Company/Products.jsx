@@ -48,6 +48,7 @@ export default function ProductManagement() {
   const [imagePreview, setImagePreview] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -121,6 +122,7 @@ export default function ProductManagement() {
       });
       setImagePreview('');
     }
+    setFieldErrors({});
     setIsModalOpen(true);
   };
 
@@ -155,6 +157,30 @@ export default function ProductManagement() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    
+    // JS Validation
+    let errors = {};
+    if (!formData.name?.trim()) errors.name = 'Product name is required';
+    if (!formData.category_id) errors.category_id = 'Category is required';
+    
+    if (formData.price === '' || formData.price === null) {
+      errors.price = 'Price is required';
+    } else if (parseFloat(formData.price) < 0) {
+      errors.price = 'Price cannot be negative';
+    }
+
+    if (formData.stock_quantity === '' || formData.stock_quantity === null) {
+      errors.stock_quantity = 'Stock is required';
+    } else if (parseInt(formData.stock_quantity, 10) < 0) {
+      errors.stock_quantity = 'Stock cannot be negative';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    
+    setFieldErrors({});
     setSaving(true);
     setError('');
     try {
@@ -729,18 +755,18 @@ export default function ProductManagement() {
                     <div>
                       <label className="block text-xs font-semibold text-text-secondary mb-1">Product Name</label>
                       <input
-                        type="text" required
-                        value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full bg-bg-primary border border-border-light rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none"
+                        type="text"
+                        value={formData.name} onChange={e => { setFormData({ ...formData, name: e.target.value }); setFieldErrors({ ...fieldErrors, name: null }); }}
+                        className={`w-full bg-bg-primary border ${fieldErrors.name ? 'border-red-500' : 'border-border-light'} rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none transition-colors`}
                       />
+                      {fieldErrors.name && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.name}</div>}
                     </div>
                     <div className="md:col-span-1">
                       <label className="block text-xs font-semibold text-text-secondary mb-1">Category</label>
                       <div className="flex gap-2">
                         <select
-                          className="w-full bg-bg-tertiary border border-border-light text-text-primary text-sm rounded-lg focus:ring-brand-caramel focus:border-brand-caramel p-2.5 outline-none transition-all"
-                          value={formData.category_id} onChange={e => setFormData({ ...formData, category_id: e.target.value })}
-                          required
+                          className={`w-full bg-bg-tertiary border ${fieldErrors.category_id ? 'border-red-500' : 'border-border-light'} text-text-primary text-sm rounded-lg focus:ring-brand-caramel focus:border-brand-caramel p-2.5 outline-none transition-all`}
+                          value={formData.category_id} onChange={e => { setFormData({ ...formData, category_id: e.target.value }); setFieldErrors({ ...fieldErrors, category_id: null }); }}
                         >
                           <option value="" disabled>Select a category</option>
                           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -754,14 +780,16 @@ export default function ProductManagement() {
                           <Plus size={18} />
                         </button>
                       </div>
+                      {fieldErrors.category_id && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.category_id}</div>}
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-text-secondary mb-1">Price (₹)</label>
                       <input
-                        type="number" step="0.01" required min="0"
-                        value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })}
-                        className="w-full bg-bg-primary border border-border-light rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none"
+                        type="number" step="0.01" min="0"
+                        value={formData.price} onChange={e => { setFormData({ ...formData, price: e.target.value }); setFieldErrors({ ...fieldErrors, price: null }); }}
+                        className={`w-full bg-bg-primary border ${fieldErrors.price ? 'border-red-500' : 'border-border-light'} rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none transition-colors`}
                       />
+                      {fieldErrors.price && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.price}</div>}
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-text-secondary mb-1">Unit (piece, box)</label>
@@ -774,10 +802,11 @@ export default function ProductManagement() {
                     <div>
                       <label className="block text-xs font-semibold text-text-secondary mb-1">Stock Quantity</label>
                       <input
-                        type="number" required min="0"
-                        value={formData.stock_quantity} onChange={e => setFormData({ ...formData, stock_quantity: e.target.value })}
-                        className="w-full bg-bg-primary border border-border-light rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none"
+                        type="number" min="0"
+                        value={formData.stock_quantity} onChange={e => { setFormData({ ...formData, stock_quantity: e.target.value }); setFieldErrors({ ...fieldErrors, stock_quantity: null }); }}
+                        className={`w-full bg-bg-primary border ${fieldErrors.stock_quantity ? 'border-red-500' : 'border-border-light'} rounded-lg py-1.5 px-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none transition-colors`}
                       />
+                      {fieldErrors.stock_quantity && <div className="text-red-500 text-[11px] mt-1 font-medium">{fieldErrors.stock_quantity}</div>}
                     </div>
                   </div>
 
@@ -959,42 +988,41 @@ export default function ProductManagement() {
                   <X size={20} />
                 </button>
 
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="p-2 bg-brand-caramel/10 text-brand-caramel rounded-lg">
-                    <FolderTree size={24} />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-text-primary leading-tight">Add Categories</h2>
-                    <p className="text-xs text-text-secondary mt-0.5">Add multiple categories by pressing Enter</p>
-                  </div>
+                <div className="flex flex-col gap-1 mb-6 border-b border-border-light/50 pb-4">
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <FolderTree className="text-red-500" size={20} />
+                    Add Categories
+                  </h2>
+                  <p className="text-xs text-gray-500 font-medium">Add one or multiple categories separated by new lines.</p>
                 </div>
 
                 {categoryError && (
-                  <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/50 flex items-start gap-2 text-red-500 text-sm">
+                  <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2 text-red-600 text-[13px] font-medium">
                     <AlertCircle size={16} className="mt-0.5 shrink-0" />
                     <span>{categoryError}</span>
                   </div>
                 )}
 
                 <form onSubmit={handleSaveCategories}>
-                  <div className="mb-4">
+                  <div className="mb-5">
+                    <label className="block text-[12px] font-bold text-gray-700 uppercase tracking-wide mb-1.5">Category Names</label>
                     <textarea
                       autoFocus
                       rows="4"
-                      placeholder="Category A&#10;Category B&#10;Category C"
+                      placeholder="e.g., Ice Cream&#10;Cake&#10;Sweets"
                       value={newCategoryNames}
                       onChange={e => setNewCategoryNames(e.target.value)}
-                      className="w-full bg-bg-primary border border-border-light rounded-lg p-3 text-sm text-text-primary focus:ring-2 focus:ring-brand-caramel/50 focus:outline-none resize-none placeholder:text-text-muted/50 custom-scrollbar leading-relaxed"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[14px] text-gray-900 focus:bg-white focus:ring-4 focus:ring-red-50 focus:border-red-500 outline-none resize-none placeholder:text-gray-400 custom-scrollbar transition-all"
                     ></textarea>
                   </div>
 
-                  <div className="flex gap-2 justify-end pt-2">
-                    <Button type="button" variant="secondary" onClick={() => setIsCategoryModalOpen(false)} className="py-2 text-sm">
+                  <div className="flex gap-2 justify-end pt-3 border-t border-gray-100">
+                    <button type="button" onClick={() => setIsCategoryModalOpen(false)} className="px-5 py-2.5 rounded-xl text-[14px] font-[600] text-gray-600 hover:bg-gray-100 transition-colors">
                       Cancel
-                    </Button>
-                    <Button type="submit" loading={savingCategory} className="py-2 text-sm">
-                      Save Categories
-                    </Button>
+                    </button>
+                    <button type="submit" disabled={savingCategory} className="px-5 py-2.5 rounded-xl text-[14px] font-[600] text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-[0_4px_12px_rgba(220,38,38,0.2)] hover:shadow-[0_6px_16px_rgba(220,38,38,0.3)] transition-all disabled:opacity-70 flex items-center gap-2">
+                      {savingCategory ? 'Saving...' : 'Save Categories'}
+                    </button>
                   </div>
                 </form>
               </GlassCard>

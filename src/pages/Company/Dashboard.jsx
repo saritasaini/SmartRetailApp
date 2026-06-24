@@ -296,21 +296,21 @@ export default function CompanyDashboard() {
     >
 
       {/* ── Header ── */}
-      <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <motion.div variants={item} className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 xl:gap-6">
         <div>
-          <h1 className="text-2xl md:text-[28px] font-bold text-gray-900 mb-1">
-            Welcome back, {profile?.shop_name || 'Mahadev'} <span>👋</span>
+          <h1 className="text-2xl md:text-[28px] font-bold text-gray-900 mb-1 leading-tight whitespace-nowrap">
+            Welcome back, <span className="inline-flex items-center gap-2">{profile?.shop_name || 'Mahadev'} <span className="text-[28px]">👋</span></span>
           </h1>
           <p className="text-[13px] text-gray-500 font-medium">Here's what's happening with your business today.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center justify-end gap-2 lg:gap-3 flex-nowrap shrink-0 w-full md:w-auto">
           {[
             { to: '/company/products?action=add_product', bg: 'bg-red-500 hover:bg-red-600 shadow-red-200', Icon: Plus, label: 'Add Product' },
             { to: '/company/customers', bg: 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200', Icon: UserPlus, label: 'Approve Retailers' },
             { to: '/company/payments', bg: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200', Icon: FileText, label: 'Verify Payments' },
           ].map(({ to, bg, Icon, label }) => (
             <Link key={label} to={to}
-              className={`${bg} text-white px-4 py-2.5 rounded-[10px] text-[13px] font-bold shadow-lg transition-all duration-300 hover:-translate-y-1 flex items-center gap-2`}
+              className={`${bg} text-white px-4 py-2.5 rounded-[10px] text-[13px] font-bold shadow-lg transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap`}
             >
               <Icon size={15} strokeWidth={2.5} /> {label}
             </Link>
