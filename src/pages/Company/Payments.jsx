@@ -18,7 +18,7 @@ export default function PaymentManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
 
-  
+  const [paymentAction, setPaymentAction] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -112,20 +112,26 @@ export default function PaymentManagement() {
     fetchPaymentsAndCustomers();
   }, []);
 
-  const updatePaymentStatus = async (id, status) => {
-    if (!window.confirm(`Are you sure you want to mark this payment as ${status.toUpperCase()}?`)) return;
+  const updatePaymentStatus = (id, status) => {
+    setPaymentAction({ id, status });
+  };
+
+  const confirmPaymentStatusUpdate = async () => {
+    if (!paymentAction) return;
     
     try {
       const { error } = await supabase
         .from('payments')
-        .update({ status })
-        .eq('id', id);
+        .update({ status: paymentAction.status })
+        .eq('id', paymentAction.id);
 
       if (error) throw error;
       fetchPaymentsAndCustomers();
     } catch (err) {
       console.error('Error updating status:', err);
       alert('Failed to update payment status.');
+    } finally {
+      setPaymentAction(null);
     }
   };
 
@@ -558,6 +564,41 @@ export default function PaymentManagement() {
                 </Button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Payment Action Confirmation Modal */}
+      {paymentAction && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-bg-secondary border border-border-light rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center"
+          >
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${paymentAction.status === 'verified' ? 'bg-brand-pistachio/10 text-brand-pistachio' : 'bg-brand-berry/10 text-brand-berry'}`}>
+              {paymentAction.status === 'verified' ? <CheckCircle size={32} /> : <XCircle size={32} />}
+            </div>
+            <h3 className="text-xl font-bold text-text-primary mb-2">
+              {paymentAction.status === 'verified' ? 'Verify Payment' : 'Reject Payment'}
+            </h3>
+            <p className="text-sm text-text-secondary mb-6">
+              Are you sure you want to mark this payment as <span className="font-bold">{paymentAction.status.toUpperCase()}</span>?
+            </p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => setPaymentAction(null)}
+                className="flex-1 py-3 px-4 rounded-xl text-sm font-semibold text-text-secondary bg-bg-tertiary hover:bg-bg-primary transition-colors border border-border-light"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPaymentStatusUpdate}
+                className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold text-white shadow-sm transition-colors ${paymentAction.status === 'verified' ? 'bg-brand-pistachio hover:bg-brand-pistachio/90' : 'bg-brand-berry hover:bg-brand-berry/90'}`}
+              >
+                Confirm
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
