@@ -34,58 +34,23 @@ export default function CartPage() {
     setError('');
     
     try {
-      // 1. Create the order record
-      const totalAmount = getTotal();
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          customer_id: user.id,
-          company_id: profile?.company_id,
-          total_amount: totalAmount,
-          status: 'pending',
-          payment_method: paymentMode
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // 2. Create the order items
-      const orderItems = items.map(item => ({
-        order_id: orderData.id,
+      // 1. Prepare items for RPC
+      const formattedItems = items.map(item => ({
         product_id: item.product.id,
-        quantity: item.quantity,
-        price_at_order: item.product.price
+        quantity: item.quantity
       }));
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
+      // 2. Call secure place_order RPC
+      const { data: orderId, error: rpcError } = await supabase.rpc('place_order', {
+        p_customer_id: user.id,
+        p_company_id: profile?.company_id,
+        p_payment_method: paymentMode,
+        p_items: formattedItems,
+        p_upi_ref: paymentMode === 'upi' ? upiRef.trim() : null
+      });
 
-      if (itemsError) {
-        // Rollback: delete the orphaned order record
-        await supabase.from('orders').delete().eq('id', orderData.id);
-        throw itemsError;
-      }
-
-      // 3. Create UPI payment record if applicable
-      if (paymentMode === 'upi') {
-        const { error: paymentError } = await supabase.from('payments').insert({
-          company_id: profile?.company_id,
-          customer_id: user.id,
-          amount: totalAmount,
-          payment_method: 'upi',
-          status: 'pending',
-          notes: `Ref: ${upiRef.trim()} - For Order #${orderData.id.slice(0, 8).toUpperCase()}`,
-          order_id: orderData.id
-        });
-        if (paymentError) {
-          console.error("Warning: Failed to create payment record for UPI", paymentError);
-          // Rollback: delete the orphaned order record and items
-          await supabase.from('order_items').delete().eq('order_id', orderData.id);
-          await supabase.from('orders').delete().eq('id', orderData.id);
-          throw new Error('Failed to save payment details. Please try again.');
-        }
+      if (rpcError) {
+        throw new Error(rpcError.message || 'Failed to place order. Please try again.');
       }
 
       // Success

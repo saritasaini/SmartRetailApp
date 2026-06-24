@@ -186,3 +186,79 @@ ALTER TABLE public.profiles ADD CONSTRAINT profiles_phone_key UNIQUE (phone);
 
 -- Fix Point 4: Product Soft Delete
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+-- ==========================================
+-- DEEP SECURITY SCENARIO FIXES
+-- ==========================================
+
+-- 1. Negative Quantity Protection
+ALTER TABLE public.order_items ADD CONSTRAINT order_items_quantity_check CHECK (quantity > 0);
+
+-- 2. Secure Server-Side Order Placement (RPC)
+-- This ensures total amount is calculated securely on the server and orders/items/payments are atomic
+CREATE OR REPLACE FUNCTION place_order(
+  p_customer_id UUID,
+  p_company_id UUID,
+  p_payment_method TEXT,
+  p_items JSONB,
+  p_upi_ref TEXT DEFAULT NULL
+) RETURNS UUID AS $$
+DECLARE
+  v_order_id UUID;
+  v_total_amount DECIMAL(10,2) := 0;
+  v_item RECORD;
+  v_product RECORD;
+  v_item_price DECIMAL(10,2);
+BEGIN
+  -- 1. Calculate the total amount securely from the database
+  FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(product_id UUID, quantity INT)
+  LOOP
+    IF v_item.quantity <= 0 THEN
+      RAISE EXCEPTION 'Quantity must be greater than 0';
+    END IF;
+
+    SELECT * INTO v_product FROM public.products WHERE id = v_item.product_id AND is_active = true FOR UPDATE;
+    
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Product % not found or inactive', v_item.product_id;
+    END IF;
+
+    IF v_product.stock_quantity < v_item.quantity THEN
+      RAISE EXCEPTION 'Insufficient stock for product %', v_product.name;
+    END IF;
+
+    v_total_amount := v_total_amount + (v_product.price * v_item.quantity);
+  END LOOP;
+
+  -- 2. Create the order
+  INSERT INTO public.orders (customer_id, company_id, total_amount, status, payment_method)
+  VALUES (p_customer_id, p_company_id, v_total_amount, 'pending', p_payment_method)
+  RETURNING id INTO v_order_id;
+
+  -- 3. Create order items
+  FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(product_id UUID, quantity INT)
+  LOOP
+    SELECT price INTO v_item_price FROM public.products WHERE id = v_item.product_id;
+    
+    INSERT INTO public.order_items (order_id, product_id, quantity, price_at_order)
+    VALUES (v_order_id, v_item.product_id, v_item.quantity, v_item_price);
+    -- Note: The trigger update_stock_on_order will automatically run and deduct stock.
+  END LOOP;
+
+  -- 4. Create UPI Payment record if applicable
+  IF p_payment_method = 'upi' THEN
+    INSERT INTO public.payments (company_id, customer_id, amount, payment_method, status, notes, order_id)
+    VALUES (
+      p_company_id, 
+      p_customer_id, 
+      v_total_amount, 
+      'upi', 
+      'pending', 
+      'Ref: ' || COALESCE(p_upi_ref, 'N/A') || ' - For Order ' || left(v_order_id::text, 8),
+      v_order_id
+    );
+  END IF;
+
+  RETURN v_order_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
