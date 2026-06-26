@@ -37,38 +37,28 @@ export default function SuperAdminLayout() {
     fetchNotifications();
     fetchMessages();
 
-    const notifSubscription = supabase.channel('custom-all-channel-notifications')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, fetchNotifications)
-      .subscribe();
-      
-    const msgSubscription = supabase.channel('custom-all-channel-messages')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, fetchMessages)
-      .subscribe();
-
+    // Realtime subscriptions removed for non-existent tables
     return () => {
-      notifSubscription.unsubscribe();
-      msgSubscription.unsubscribe();
+      // Cleanup if any future subscriptions are added
     };
   }, []);
 
   const fetchNotifications = async () => {
-    const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(20);
-    if (!error && data) setNotifications(data);
+    // Stubbed until backend supports notifications
+    setNotifications([]);
   };
 
   const fetchMessages = async () => {
-    const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(20);
-    if (!error && data) setMessages(data);
+    // Stubbed until backend supports messages
+    setMessages([]);
   };
 
   const markAllNotificationsRead = async () => {
-    await supabase.from('notifications').update({ is_read: true }).eq('is_read', false);
-    fetchNotifications();
+    setNotifications([]);
   };
 
   const markAllMessagesRead = async () => {
-    await supabase.from('messages').update({ is_read: true }).eq('is_read', false);
-    fetchMessages();
+    setMessages([]);
   };
 
   const handleSignOut = async () => {
@@ -86,7 +76,7 @@ export default function SuperAdminLayout() {
     const fetchCounts = async () => {
       try {
         const [companiesRes, customersRes, ordersRes] = await Promise.all([
-          supabase.from('companies').select('*', { count: 'exact', head: true }),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'company'),
           supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'customer'),
           supabase.from('orders').select('*', { count: 'exact', head: true })
         ]);

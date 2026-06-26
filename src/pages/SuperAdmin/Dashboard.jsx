@@ -63,12 +63,11 @@ export default function Dashboard() {
       setLoading(true);
 
       // Fetch Orders
-      const { data: orders, error: ordersError } = await supabase
+      const { data: rawOrders, error: ordersError } = await supabase
         .from('orders')
         .select(`
           *,
-          customer:customer_id(shop_name, owner_name),
-          company:company_id(shop_name, owner_name)
+          customer:profiles!customer_id(shop_name, owner_name)
         `)
         .order('created_at', { ascending: false });
 
@@ -82,15 +81,24 @@ export default function Dashboard() {
 
       if (profilesError) throw profilesError;
 
+      const allProfiles = profiles || [];
+      const companies = allProfiles.filter(p => p.role === 'company');
+      const customers = allProfiles.filter(p => p.role === 'customer');
+
+      // Map company to orders manually since direct join on company_id -> profiles is not supported
+      const orders = (rawOrders || []).map(order => {
+        const company = companies.find(c => c.id === order.company_id);
+        return {
+          ...order,
+          company: company ? { shop_name: company.shop_name, owner_name: company.owner_name } : null
+        };
+      });
+
       // Calculate Stats
       const allOrders = orders || [];
       const deliveredOrders = allOrders.filter(o => o.status === 'delivered');
       const revenue = deliveredOrders.reduce((acc, curr) => acc + Number(curr.total_amount || 0), 0);
       
-      const allProfiles = profiles || [];
-      const companies = allProfiles.filter(p => p.role === 'company');
-      const customers = allProfiles.filter(p => p.role === 'customer');
-
       setStats({
         revenue,
         companies: companies.length,

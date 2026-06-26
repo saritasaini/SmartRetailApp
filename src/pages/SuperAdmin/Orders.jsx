@@ -62,20 +62,38 @@ export default function Orders() {
 
   const fetchOrders = async () => {
       try {
-          const { data, error } = await supabase
+          const { data: rawOrders, error } = await supabase
             .from('orders')
             .select(`
               id,
               created_at,
               status,
               total_amount,
+              company_id,
               customer:profiles!customer_id (owner_name, phone),
-              company:profiles!company_id (shop_name, logo_url),
               order_items (quantity)
             `)
             .order('created_at', { ascending: false });
 
           if (error) throw error;
+
+          const { data: companiesData } = await supabase
+            .from('profiles')
+            .select('id, shop_name, logo_url')
+            .eq('role', 'company');
+
+          const companiesMap = new Map();
+          if (companiesData) {
+              companiesData.forEach(c => companiesMap.set(c.id, c));
+          }
+
+          const data = (rawOrders || []).map(order => {
+              return {
+                  ...order,
+                  company: companiesMap.get(order.company_id) || null
+              };
+          });
+
 
           const getInitials = (name) => {
               if (!name) return 'U';
@@ -160,14 +178,14 @@ export default function Orders() {
           setStats(totalStats);
 
           // Fetch real companies for the filter
-          const { data: companiesData, error: companiesError } = await supabase
+          const { data: filterCompaniesData, error: companiesError } = await supabase
             .from('profiles')
             .select('shop_name')
             .eq('role', 'company')
             .order('shop_name');
             
-          if (!companiesError && companiesData) {
-              setCompaniesList(companiesData.map(c => c.shop_name));
+          if (!companiesError && filterCompaniesData) {
+              setCompaniesList(filterCompaniesData.map(c => c.shop_name));
           } else {
               setCompaniesList([]);
           }

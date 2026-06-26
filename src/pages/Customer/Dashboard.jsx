@@ -47,26 +47,23 @@ export default function CustomerDashboard() {
         if (orders) {
           setRecentOrders(orders.slice(0, 3));
           
-          const totalBilledLedger = orders
-            .filter(o => o.payment_method === 'ledger' && o.status === 'delivered')
-            .reduce((acc, curr) => acc + Number(curr.total_amount), 0);
+          const validOrders = orders.filter(o => o.status !== 'cancelled');
+          const totalBilled = validOrders.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
             
           const pending = orders.filter(o => o.status === 'pending' || o.status === 'confirmed' || o.status === 'out_for_delivery').length;
           const delivered = orders.filter(o => o.status === 'delivered').length;
 
           const { data: payments } = await supabase
             .from('payments')
-            .select('amount, order_id, status')
+            .select('amount, status')
             .eq('customer_id', user.id)
             .eq('status', 'verified');
             
-          const totalPaidLedger = (payments || [])
-            .filter(p => p.order_id === null)
-            .reduce((acc, curr) => acc + Number(curr.amount), 0);
+          const totalPaid = (payments || []).reduce((acc, curr) => acc + Number(curr.amount), 0);
           
           setStats({
-            outstanding: totalBilledLedger - totalPaidLedger,
-            totalSpent: totalBilledLedger,
+            outstanding: totalBilled - totalPaid,
+            totalSpent: totalBilled,
             total: orders.length,
             pending: pending,
             delivered: delivered

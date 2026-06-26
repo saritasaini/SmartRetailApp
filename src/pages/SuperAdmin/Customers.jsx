@@ -81,18 +81,30 @@ export default function Customers() {
 
   const fetchCustomers = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: rawCustomers, error } = await supabase
         .from('profiles')
-        .select(`
-            *,
-            company:company_id(id, shop_name)
-        `)
+        .select('*')
         .eq('role', 'customer')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      const fetchedCustomers = data || [];
+      const { data: companiesData } = await supabase
+        .from('profiles')
+        .select('id, shop_name')
+        .eq('role', 'company');
+
+      const companiesMap = new Map();
+      if (companiesData) {
+          companiesData.forEach(c => companiesMap.set(c.id, c));
+      }
+
+      const fetchedCustomers = (rawCustomers || []).map(customer => {
+          return {
+              ...customer,
+              company: companiesMap.get(customer.company_id) || null
+          };
+      });
       setCustomers(fetchedCustomers);
 
       // Calculate stats

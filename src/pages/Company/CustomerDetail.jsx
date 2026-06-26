@@ -110,22 +110,19 @@ export default function CustomerDetail() {
         setPurchasedProducts(Array.from(purchasedItemsMap.values()).sort((a, b) => b.quantity - a.quantity));
         
         // Calculate Stats
-        // ONLY Ledger (Pay Later) orders that are DELIVERED are added to the Due amount
-        const totalBilledLedger = ordersData
-          .filter(o => o.payment_method === 'ledger' && o.status === 'delivered')
-          .reduce((acc, curr) => acc + Number(curr.total_amount), 0);
+        const validOrders = ordersData.filter(o => o.status !== 'cancelled');
+        const totalBilled = validOrders.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
           
-        // ONLY manual payments (order_id is null) are subtracted from the Ledger Due
-        const totalPaidLedger = paymentsData
-          ?.filter(p => p.status === 'verified' && p.order_id === null)
+        const totalPaid = paymentsData
+          ?.filter(p => p.status === 'verified')
           .reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
 
         const pending = ordersData.filter(o => o.status === 'pending' || o.status === 'confirmed').length;
         
         setStats({
           totalOrders: ordersData.length,
-          totalSpent: totalBilledLedger,
-          outstanding: totalBilledLedger - totalPaidLedger,
+          totalSpent: totalBilled,
+          outstanding: totalBilled - totalPaid,
           pendingOrders: pending
         });
       }

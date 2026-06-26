@@ -30,7 +30,7 @@ export default function InvoiceModal({ order, profile, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center p-2 sm:p-6 md:p-12 overflow-y-auto">
-      <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl relative my-8 sm:my-auto">
+      <div id="print-area" className="bg-white w-full max-w-3xl rounded-xl shadow-2xl relative my-8 sm:my-auto">
         
         {/* Controls (Hidden in Print) */}
         <div className="print:hidden flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
@@ -49,7 +49,7 @@ export default function InvoiceModal({ order, profile, onClose }) {
         <div className="p-5 sm:p-8 md:p-12 text-gray-800 font-sans print:p-0 print:text-black">
           
           {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start gap-8 border-b border-gray-200 pb-8 mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start gap-6 md:gap-8 border-b border-gray-200 pb-4 mb-4 md:pb-8 md:mb-8">
             <div className="w-full">
               <h1 className="text-3xl font-extrabold text-[#8B5A2B] tracking-tight mb-1 uppercase">{companyDetails.shop_name}</h1>
               <p className="text-sm text-gray-600">Wholesale Distributors & Manufacturers</p>
@@ -59,28 +59,28 @@ export default function InvoiceModal({ order, profile, onClose }) {
               </div>
             </div>
             
-            <div className="w-full md:text-right bg-gray-50 md:bg-transparent p-5 md:p-0 rounded-xl border border-gray-100 md:border-none print:bg-transparent print:border-none">
-              <h2 className="text-xl md:text-2xl font-bold text-gray-800 md:text-gray-400 uppercase tracking-widest mb-4">Tax Invoice</h2>
-              <div className="grid grid-cols-2 md:flex md:flex-col gap-4 md:gap-2 text-sm">
-                <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-1 md:gap-3">
-                  <span className="text-gray-400 text-xs uppercase tracking-wider font-bold">Invoice No</span>
-                  <span className="font-bold text-gray-800 bg-white md:bg-transparent px-2 py-1 md:p-0 rounded border border-gray-100 md:border-none">INV-{order.id.slice(0, 8).toUpperCase()}</span>
+            <div className="w-full md:text-right bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-xl border border-gray-100 md:border-none print:bg-transparent print:border-none">
+              <h2 className="text-lg md:text-2xl font-bold text-gray-800 md:text-gray-400 uppercase tracking-widest mb-3 md:mb-4">Tax Invoice</h2>
+              <div className="grid grid-cols-2 md:flex md:flex-col gap-y-3 gap-x-2 md:gap-2 text-sm">
+                <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-0.5 md:gap-3">
+                  <span className="text-gray-400 text-[10px] sm:text-xs uppercase tracking-wider font-bold">Invoice No</span>
+                  <span className="font-bold text-gray-800 text-[11px] sm:text-sm">INV-{order.id.slice(0, 8).toUpperCase()}</span>
+                </div>
+                <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-0.5 md:gap-3">
+                  <span className="text-gray-400 text-[10px] sm:text-xs uppercase tracking-wider font-bold">Date</span>
+                  <span className="font-bold text-gray-800 text-[11px] sm:text-sm">{invoiceDate}</span>
                 </div>
                 <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-1 md:gap-3">
-                  <span className="text-gray-400 text-xs uppercase tracking-wider font-bold">Date</span>
-                  <span className="font-bold text-gray-800 bg-white md:bg-transparent px-2 py-1 md:p-0 rounded border border-gray-100 md:border-none">{invoiceDate}</span>
+                  <span className="text-gray-400 text-[10px] sm:text-xs uppercase tracking-wider font-bold">Status</span>
+                  <span className={`font-bold uppercase px-2 py-0.5 rounded flex items-center justify-center md:justify-end text-center md:text-right text-[10px] sm:text-xs w-max ${
+                    order.status === 'cancelled' ? 'text-red-600 bg-red-50' : 
+                    order.status === 'pending' ? 'text-yellow-600 bg-yellow-50' : 
+                    'text-green-600 bg-green-50'
+                  }`}>{order.status.replace(/_/g, ' ')}</span>
                 </div>
-                <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-1 md:gap-3 col-span-2 md:col-span-1">
-                  <span className="text-gray-400 text-xs uppercase tracking-wider font-bold">Status</span>
-                  <span className={`font-bold uppercase px-2 py-1 md:p-0 rounded border md:border-none inline-block text-center ${
-                    order.status === 'cancelled' ? 'text-red-600 bg-red-50 border-red-100' : 
-                    order.status === 'pending' ? 'text-yellow-600 bg-yellow-50 border-yellow-100' : 
-                    'text-green-600 bg-green-50 border-green-100'
-                  }`}>{order.status.replace('_', ' ')}</span>
-                </div>
-                <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-1 md:gap-3 col-span-2 md:col-span-1">
-                  <span className="text-gray-400 text-xs uppercase tracking-wider font-bold">Payment Mode</span>
-                  <span className="font-bold text-gray-800 bg-white md:bg-transparent px-2 py-1 md:p-0 rounded border border-gray-100 md:border-none">
+                <div className="flex flex-col md:flex-row md:justify-end md:items-center gap-0.5 md:gap-3">
+                  <span className="text-gray-400 text-[10px] sm:text-xs uppercase tracking-wider font-bold">Payment Mode</span>
+                  <span className="font-bold text-gray-800 text-[11px] sm:text-sm">
                     {order.payment_method === 'cod' ? 'Cash on Delivery' : order.payment_method === 'upi' ? 'Online (UPI)' : 'Pay Later'}
                   </span>
                 </div>
@@ -89,12 +89,32 @@ export default function InvoiceModal({ order, profile, onClose }) {
           </div>
 
           {/* Billed To */}
-          <div className="mb-8 bg-gray-50 p-4 rounded-lg border border-gray-100 print:bg-transparent print:p-0 print:border-none">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Billed To</h3>
-            <p className="text-lg font-bold text-gray-800">{profile?.shop_name || 'Retailer'}</p>
-            <p className="text-sm text-gray-600 mt-1">{profile?.owner_name}</p>
-            <p className="text-sm text-gray-600 mt-1">{profile?.address}</p>
-            <p className="text-sm text-gray-600 mt-1">Phone: {profile?.phone}</p>
+          <div className="mb-6 md:mb-8 bg-gray-50 p-4 rounded-lg border border-gray-100 print:bg-transparent print:p-0 print:border-none">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Billed To</h3>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600 flex items-start gap-2">
+                <span className="font-semibold text-gray-800 min-w-[90px]">Shop Name:</span> 
+                <span className="text-gray-800 font-bold">{profile?.shop_name || 'Retailer'}</span>
+              </p>
+              {profile?.owner_name && (
+                <p className="text-sm text-gray-600 flex items-start gap-2">
+                  <span className="font-semibold text-gray-800 min-w-[90px]">Owner Name:</span> 
+                  <span>{profile.owner_name}</span>
+                </p>
+              )}
+              {profile?.address && (
+                <p className="text-sm text-gray-600 flex items-start gap-2">
+                  <span className="font-semibold text-gray-800 min-w-[90px]">Address:</span> 
+                  <span>{profile.address}</span>
+                </p>
+              )}
+              {profile?.phone && (
+                <p className="text-sm text-gray-600 flex items-start gap-2">
+                  <span className="font-semibold text-gray-800 min-w-[90px]">Phone:</span> 
+                  <span>{profile.phone}</span>
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Items Table (Responsive) */}
@@ -138,16 +158,16 @@ export default function InvoiceModal({ order, profile, onClose }) {
               <table className="w-full text-sm">
                 <tbody>
                   <tr className="border-b border-gray-200/60 sm:border-gray-200">
-                    <td className="py-3 px-2 text-gray-500 font-medium">Subtotal</td>
-                    <td className="py-3 px-2 text-right font-bold text-gray-800">₹{order.total_amount}</td>
+                    <td className="py-0.5 sm:py-3 px-2 text-gray-500 font-medium">Subtotal</td>
+                    <td className="py-0.5 sm:py-3 px-2 text-right font-bold text-gray-800">₹{order.total_amount}</td>
                   </tr>
                   <tr className="border-b border-gray-200/60 sm:border-gray-200">
-                    <td className="py-3 px-2 text-gray-500 font-medium">Tax / GST (Included)</td>
-                    <td className="py-3 px-2 text-right font-bold text-gray-800">₹0.00</td>
+                    <td className="py-0.5 sm:py-3 px-2 text-gray-500 font-medium">Tax / GST (Included)</td>
+                    <td className="py-0.5 sm:py-3 px-2 text-right font-bold text-gray-800">₹0.00</td>
                   </tr>
                   <tr className="sm:border-b-2 sm:border-gray-800 text-lg md:text-xl">
-                    <td className="py-4 px-2 font-extrabold text-gray-800">Total Amount</td>
-                    <td className="py-4 px-2 text-right font-extrabold text-[#8B5A2B]">₹{order.total_amount}</td>
+                    <td className="py-1.5 sm:py-4 px-2 font-extrabold text-gray-800">Total Amount</td>
+                    <td className="py-1.5 sm:py-4 px-2 text-right font-extrabold text-[#8B5A2B]">₹{order.total_amount}</td>
                   </tr>
                 </tbody>
               </table>
@@ -155,9 +175,9 @@ export default function InvoiceModal({ order, profile, onClose }) {
           </div>
 
           {/* Footer */}
-          <div className="mt-12 pt-6 sm:mt-16 sm:pt-8 print:mt-12 print:pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
+          <div className="mt-6 pt-4 sm:mt-16 sm:pt-8 print:mt-12 print:pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
             <p>Thank you for your business!</p>
-            <p className="mt-4 print:hidden">This is a computer generated invoice and does not require a physical signature.</p>
+            <p className="mt-2 sm:mt-4 print:hidden">This is a computer generated invoice and does not require a physical signature.</p>
           </div>
           
         </div>
@@ -166,12 +186,11 @@ export default function InvoiceModal({ order, profile, onClose }) {
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           @page { size: auto; margin: 0mm; }
-          body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; }
           body * { visibility: hidden; }
-          .fixed.inset-0 { position: absolute; left: 0; top: 0; right: 0; bottom: auto; background: transparent; backdrop-filter: none; padding: 0; display: block; overflow: visible; min-height: auto; height: auto; }
-          .bg-white.w-full.max-w-3xl { max-w-none; box-shadow: none; border: none; margin: 0; padding: 15mm 20mm; min-height: auto; height: auto; }
-          .p-5.sm\\:p-8.md\\:p-12 { padding: 0; }
-          .bg-white.w-full.max-w-3xl * { visibility: visible; }
+          #print-area, #print-area * { visibility: visible; }
+          #print-area { position: absolute; left: 0; top: 0; width: 100%; max-width: 100%; margin: 0; padding: 15mm; box-shadow: none; border: none; border-radius: 0; }
+          .print\\:hidden, .print\\:hidden * { display: none !important; visibility: hidden !important; }
         }
       `}} />
     </div>

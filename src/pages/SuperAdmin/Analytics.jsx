@@ -93,12 +93,12 @@ export default function SuperAdminAnalytics() {
           const startDateStr = startDate.toISOString();
 
           // 1. Fetch Orders
-          const { data: orders, error: ordersError } = await supabase
+          const { data: rawOrders, error: ordersError } = await supabase
             .from('orders')
             .select(`
                 *,
-                company:company_id(shop_name, owner_name),
-                customer:customer_id(shop_name, owner_name)
+                company_id,
+                customer:profiles!customer_id(shop_name, owner_name)
             `)
             .gte('created_at', startDateStr)
             .order('created_at', { ascending: false });
@@ -113,6 +113,21 @@ export default function SuperAdminAnalytics() {
             .order('created_at', { ascending: false });
 
           if (profilesError) throw profilesError;
+
+          const { data: companiesData } = await supabase
+            .from('profiles')
+            .select('id, shop_name, owner_name')
+            .eq('role', 'company');
+
+          const companiesMapData = new Map();
+          if (companiesData) {
+              companiesData.forEach(c => companiesMapData.set(c.id, c));
+          }
+
+          const orders = (rawOrders || []).map(o => ({
+              ...o,
+              company: companiesMapData.get(o.company_id) || null
+          }));
 
           const allOrders = orders || [];
           const deliveredOrders = allOrders.filter(o => o.status === 'delivered');

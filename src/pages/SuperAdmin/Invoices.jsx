@@ -58,19 +58,34 @@ export default function SuperAdminInvoices() {
   const fetchInvoices = async () => {
       try {
           setLoading(true);
-          const { data: orders, error } = await supabase
+          const { data: rawOrders, error } = await supabase
               .from('orders')
               .select(`
                   id,
                   created_at,
                   total_amount,
                   payment_status,
-                  company:company_id(shop_name, owner_name),
-                  customer:customer_id(shop_name, owner_name)
+                  company_id,
+                  customer:profiles!customer_id(shop_name, owner_name)
               `)
               .order('created_at', { ascending: false });
 
           if (error) throw error;
+
+          const { data: companiesData } = await supabase
+              .from('profiles')
+              .select('id, shop_name, owner_name')
+              .eq('role', 'company');
+
+          const companiesMap = new Map();
+          if (companiesData) {
+              companiesData.forEach(c => companiesMap.set(c.id, c));
+          }
+
+          const orders = (rawOrders || []).map(o => ({
+              ...o,
+              company: companiesMap.get(o.company_id) || null
+          }));
 
           const formattedInvoices = (orders || []).map((o, idx) => {
               const date = new Date(o.created_at);

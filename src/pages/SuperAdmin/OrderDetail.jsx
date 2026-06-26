@@ -17,7 +17,6 @@ export default function SuperAdminOrderDetail() {
           .select(`
             *,
             customer:profiles!customer_id (owner_name, email, phone, address),
-            company:profiles!company_id (shop_name, owner_name, phone, address, email),
             order_items (
               id,
               quantity,
@@ -29,6 +28,17 @@ export default function SuperAdminOrderDetail() {
           .single();
 
         if (fetchError) throw fetchError;
+
+        let companyData = null;
+        if (data.company_id) {
+            const { data: cData } = await supabase
+                .from('profiles')
+                .select('shop_name, owner_name, phone, address, email')
+                .eq('id', data.company_id)
+                .single();
+            companyData = cData;
+        }
+        data.company = companyData;
 
         const getInitials = (name) => {
             if (!name) return 'U';
