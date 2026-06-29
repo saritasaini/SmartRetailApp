@@ -171,7 +171,7 @@ export default function CompanyRegister() {
               value={formData.shop_name}
               onChange={handleChange}
               className="w-full bg-bg-primary border border-border-light rounded-lg py-2 pl-10 pr-4 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-caramel/50 focus:border-brand-caramel transition-colors"
-              placeholder="Mahadev Wholesale Inc."
+              placeholder="SmartRetail Wholesale Inc."
             />
           </div>
         </div>

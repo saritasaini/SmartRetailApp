@@ -1,4 +1,4 @@
-package com.mahadev.app;
+package com.smartretail.app;
 
 import com.getcapacitor.BridgeActivity;
 

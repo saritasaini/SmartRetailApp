@@ -19,9 +19,9 @@ export default function CompanyLayout() {
   const profile = useAuthStore(state => state.profile);
 
   useEffect(() => {
-    document.title = profile?.shop_name || 'Mahadev - Company Panel';
+    document.title = profile?.shop_name || 'SmartRetail - Company Panel';
     return () => {
-      document.title = 'Mahadev';
+      document.title = 'SmartRetail';
     };
   }, [profile?.shop_name]);
 
@@ -50,8 +50,8 @@ export default function CompanyLayout() {
             <img src={profile.logo_url} alt="Logo" className="w-12 h-12 rounded-xl object-cover shadow-sm border border-gray-100 shrink-0 bg-white" />
           )}
           <div className="min-w-0">
-            <h1 className="text-xl font-bold text-red-600 truncate" title={profile?.shop_name || 'Mahadev'}>
-              {profile?.shop_name || 'Mahadev'}
+            <h1 className="text-xl font-bold text-red-600 truncate" title={profile?.shop_name || 'SmartRetail'}>
+              {profile?.shop_name || 'SmartRetail'}
             </h1>
             <p className="text-xs text-gray-400 mt-0.5">Company Panel</p>
           </div>
@@ -103,8 +103,8 @@ export default function CompanyLayout() {
               <img src={profile.logo_url} alt="Logo" className="w-10 h-10 rounded-xl object-cover shadow-sm border border-gray-100 shrink-0 bg-white" />
             )}
             <div className="min-w-0">
-              <h1 className="text-lg font-bold text-red-600 tracking-tight truncate max-w-[200px]" title={profile?.shop_name || 'Mahadev'}>
-                {profile?.shop_name || 'Mahadev'}
+              <h1 className="text-lg font-bold text-red-600 tracking-tight truncate max-w-[200px]" title={profile?.shop_name || 'SmartRetail'}>
+                {profile?.shop_name || 'SmartRetail'}
               </h1>
               <p className="text-[11px] font-medium text-gray-400">Company Panel</p>
             </div>

@@ -299,7 +299,7 @@ export default function CompanyDashboard() {
       <motion.div variants={item} className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 xl:gap-6">
         <div>
           <h1 className="text-2xl md:text-[28px] font-bold text-gray-900 mb-1 leading-tight whitespace-nowrap">
-            Welcome back, <span className="inline-flex items-center gap-2">{profile?.shop_name || 'Mahadev'} <span className="text-[28px]">👋</span></span>
+            Welcome back, <span className="inline-flex items-center gap-2">{profile?.shop_name || 'SmartRetail'} <span className="text-[28px]">👋</span></span>
           </h1>
           <p className="text-[13px] text-gray-500 font-medium">Here's what's happening with your business today.</p>
         </div>
