@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Search, ChevronDown, Check, Clock, Truck, Package, ClipboardCheck, ChevronRight, User, CreditCard, Banknote, ChevronLeft } from 'lucide-react';
@@ -164,7 +164,7 @@ export default function OrderManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
       const user = useAuthStore.getState().user;
@@ -196,7 +196,7 @@ export default function OrderManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchError]);
 
   useEffect(() => {
     fetchOrders();
@@ -211,7 +211,7 @@ export default function OrderManagement() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchOrders]);
 
   const updateOrderStatus = async (orderId, newStatus) => {
     // Optimistic UI Update

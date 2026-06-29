@@ -8,18 +8,24 @@ export default function SuperAdminSettings() {
     
     // Profile State
     const [profileData, setProfileData] = useState({
-        fullName: profile?.owner_name || profile?.full_name || 'Admin User',
-        email: user?.email || 'admin@smartretail.com',
-        phone: profile?.phone || '+91 98765 43210'
+        fullName: profile?.owner_name || profile?.full_name || '',
+        email: user?.email || '',
+        phone: profile?.phone || ''
     });
     const [phoneError, setPhoneError] = useState('');
 
     useEffect(() => {
         if (profile || user) {
-            setProfileData({
-                fullName: profile?.owner_name || profile?.full_name || 'Admin User',
-                email: user?.email || 'admin@smartretail.com',
-                phone: profile?.phone || '+91 98765 43210'
+            setProfileData(prev => {
+                const newData = {
+                    fullName: profile?.owner_name || profile?.full_name || '',
+                    email: user?.email || '',
+                    phone: profile?.phone || ''
+                };
+                if (prev.fullName !== newData.fullName || prev.email !== newData.email || prev.phone !== newData.phone) {
+                    return newData;
+                }
+                return prev;
             });
         }
     }, [profile, user]);

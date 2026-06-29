@@ -382,10 +382,7 @@ export default function ProductManagement() {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  // Reset pagination when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedCategory, statusFilter]);
+  // Reset pagination when filters change (handled in event handlers)
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -418,7 +415,7 @@ export default function ProductManagement() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
         {/* Total Products */}
         <div
-          onClick={() => setStatusFilter('All')}
+          onClick={() => { setStatusFilter('All'); setCurrentPage(1); }}
           className={`bg-white rounded-xl p-6 shadow-sm border ${statusFilter === 'All' ? 'border-red-200 shadow-md ring-1 ring-red-100' : 'border-gray-200'} relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer group`}
         >
           <div className="absolute top-0 left-0 right-0 h-1 bg-red-600 rounded-t-xl"></div>
@@ -435,7 +432,7 @@ export default function ProductManagement() {
 
         {/* Active Items */}
         <div
-          onClick={() => setStatusFilter('Active')}
+          onClick={() => { setStatusFilter('Active'); setCurrentPage(1); }}
           className={`bg-white rounded-xl p-6 shadow-sm border ${statusFilter === 'Active' ? 'border-emerald-200 shadow-md ring-1 ring-emerald-100' : 'border-gray-200'} relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer group`}
         >
           <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600 rounded-t-xl"></div>
@@ -452,7 +449,7 @@ export default function ProductManagement() {
 
         {/* Deactive Items */}
         <div
-          onClick={() => setStatusFilter('Deactive')}
+          onClick={() => { setStatusFilter('Deactive'); setCurrentPage(1); }}
           className={`bg-white rounded-xl p-6 shadow-sm border ${statusFilter === 'Deactive' ? 'border-gray-300 shadow-md ring-1 ring-gray-200' : 'border-gray-200'} relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer group`}
         >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gray-500 rounded-t-xl"></div>
@@ -469,7 +466,7 @@ export default function ProductManagement() {
 
         {/* Low Stock Alerts */}
         <div
-          onClick={() => setStatusFilter('LowStock')}
+          onClick={() => { setStatusFilter('LowStock'); setCurrentPage(1); }}
           className={`bg-white rounded-xl p-6 shadow-sm border ${statusFilter === 'LowStock' ? 'border-amber-200 shadow-md ring-1 ring-amber-100' : 'border-gray-200'} relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer group`}
         >
           <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500 rounded-t-xl"></div>
@@ -493,7 +490,7 @@ export default function ProductManagement() {
             type="text"
             placeholder="Search products by name or category..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             className="w-full py-3.5 pr-4 pl-12 border border-gray-200 rounded-xl text-[14px] text-gray-800 bg-white shadow-sm transition-all duration-200 focus:outline-none focus:border-red-600 focus:ring-4 focus:ring-red-50 placeholder:text-gray-400"
           />
         </div>
@@ -910,7 +907,7 @@ export default function ProductManagement() {
                     ) : (
                       <ImageIcon className="text-text-muted opacity-30" size={48} />
                     )}
-                    <div className="absolute top-4 left-4 z-10">
+                    <div className="absolute bottom-4 left-4 z-10">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-brand-caramel bg-brand-caramel/10 backdrop-blur-md px-2.5 py-1 rounded border border-brand-caramel/20 shadow-sm">
                         {viewingProduct.categories?.name || 'Uncategorized'}
                       </span>

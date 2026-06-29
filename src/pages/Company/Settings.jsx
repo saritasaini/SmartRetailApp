@@ -63,10 +63,10 @@ export default function CompanySettings() {
   };
 
   useEffect(() => {
-    if (activeTab === 'members' && profile?.id) {
+    if (profile?.id) {
       fetchMembers();
     }
-  }, [activeTab, profile?.id]);
+  }, [profile?.id]);
 
   const fetchMembers = async () => {
     try {

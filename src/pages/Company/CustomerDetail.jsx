@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import GlassCard from '../../components/ui/GlassCard';
@@ -31,9 +31,9 @@ export default function CustomerDetail() {
 
   useEffect(() => {
     fetchCustomerDetails();
-  }, [id]);
+  }, [fetchCustomerDetails]);
 
-  const fetchCustomerDetails = async () => {
+  const fetchCustomerDetails = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch Customer Profile
@@ -132,7 +132,7 @@ export default function CustomerDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const statCards = [
     { title: "Outstanding Balance", value: `₹${stats.outstanding.toLocaleString()}`, icon: TrendingUp, color: "text-brand-berry", bg: "bg-brand-berry/10" },
