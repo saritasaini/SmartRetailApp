@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './useAuthStore';
+import { calculateOfferDetails } from '../utils/offerUtils';
 
 export const useCartStore = create((set, get) => ({
   items: [],
@@ -17,7 +18,10 @@ export const useCartStore = create((set, get) => ({
         .select(`
           id,
           quantity,
-          products (*)
+          products (
+            *,
+            categories (name)
+          )
         `)
         .eq('customer_id', user.id);
         
@@ -44,6 +48,15 @@ export const useCartStore = create((set, get) => ({
     const user = useAuthStore.getState().user;
     const items = get().items;
     const existing = items.find((i) => i.product?.id === product.id);
+
+    // Stock & Offer check
+    const currentQtyInCart = existing ? existing.quantity : 0;
+    const newQty = currentQtyInCart + quantity;
+    const { totalRequiredStock } = calculateOfferDetails(product, newQty);
+    
+    if (totalRequiredStock > product.stock_quantity) {
+      throw new Error(`Insufficient stock. Only ${product.stock_quantity} left in stock (including any free items).`);
+    }
 
     // Optimistic update
     if (existing) {
@@ -111,6 +124,13 @@ export const useCartStore = create((set, get) => ({
     const items = get().items;
     const existing = items.find((i) => i.product?.id === productId);
     
+    if (existing && existing.product) {
+      const { totalRequiredStock } = calculateOfferDetails(existing.product, quantity);
+      if (totalRequiredStock > existing.product.stock_quantity) {
+        throw new Error(`Insufficient stock. Only ${existing.product.stock_quantity} left in stock (including any free items).`);
+      }
+    }
+
     set({
       items: items.map((i) => 
         i.product?.id === productId ? { ...i, quantity } : i
@@ -140,7 +160,8 @@ export const useCartStore = create((set, get) => ({
     const items = get().items;
     return items.reduce((total, item) => {
       if (!item.product) return total;
-      return total + (item.product.price * item.quantity);
+      const { finalPrice } = calculateOfferDetails(item.product, item.quantity);
+      return total + (finalPrice * item.quantity);
     }, 0);
   }
 }));

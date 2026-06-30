@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCartStore } from '../../store/useCartStore';
 import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
 import { Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingCart, ArrowRight, Image as ImageIcon } from 'lucide-react';
+import { calculateOfferDetails } from '../../utils/offerUtils';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
+import { toast } from 'react-hot-toast';
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart, emptyCartDB, getTotal } = useCartStore();
@@ -14,8 +16,26 @@ export default function CartPage() {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [error, setError] = useState('');
-  const [paymentMode, setPaymentMode] = useState('ledger');
+  const [paymentMode, setPaymentMode] = useState('cod');
   const [upiRef, setUpiRef] = useState('');
+  const [companyAllowPayLater, setCompanyAllowPayLater] = useState(true);
+
+  useEffect(() => {
+    if (profile?.company_id) {
+      supabase.from('profiles').select('allow_pay_later').eq('id', profile.company_id).single()
+        .then(({ data }) => {
+           if (data) setCompanyAllowPayLater(data.allow_pay_later ?? true);
+        });
+    }
+  }, [profile?.company_id]);
+
+  const handleUpdateQuantity = async (productId, newQty) => {
+    try {
+      await updateQuantity(productId, newQty);
+    } catch (err) {
+      toast.error(err.message || 'Failed to update quantity');
+    }
+  };
 
   const handlePlaceOrder = async () => {
     if (items.length === 0 || !user) return;
@@ -117,7 +137,9 @@ export default function CartPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Cart Items List */}
         <div className="lg:col-span-2 space-y-4">
-          {items.map(({ product, quantity }) => (
+          {items.map(({ product, quantity }) => {
+            const { hasValidOffer, finalPrice, freeQuantity } = calculateOfferDetails(product, quantity);
+            return (
             <GlassCard key={product.id} className="p-4 flex gap-4 items-center">
               {/* Product Image */}
               <div className="w-20 h-20 sm:w-24 sm:h-24 bg-bg-tertiary rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
@@ -135,21 +157,31 @@ export default function CartPage() {
                   <p className="text-xs text-text-secondary bg-bg-primary px-1.5 py-0.5 rounded w-fit border border-border-light">
                     {product.categories?.name}
                   </p>
-                  <p className="text-sm font-bold text-brand-caramel pt-1">₹{product.price}</p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <p className="text-sm font-bold text-brand-caramel">₹{finalPrice}</p>
+                    {hasValidOffer && (product.scheme_type === 'percentage' || product.scheme_type === 'flat') && (
+                      <p className="text-xs text-gray-400 line-through">₹{product.price}</p>
+                    )}
+                  </div>
+                  {freeQuantity > 0 && (
+                    <p className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-1">
+                      + {freeQuantity} item(s) FREE
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-4">
                   {/* Quantity Adjuster */}
                   <div className="flex items-center gap-2 bg-bg-tertiary rounded-lg p-1 border border-border-light shadow-sm">
                     <button 
-                      onClick={() => updateQuantity(product.id, quantity - 1)}
+                      onClick={() => handleUpdateQuantity(product.id, quantity - 1)}
                       className="p-1.5 hover:bg-bg-primary hover:text-brand-caramel rounded text-text-secondary transition-colors"
                     >
                       <Minus size={14} />
                     </button>
                     <span className="text-sm font-bold w-6 text-center text-text-primary">{quantity}</span>
                     <button 
-                      onClick={() => updateQuantity(product.id, quantity + 1)}
+                      onClick={() => handleUpdateQuantity(product.id, quantity + 1)}
                       disabled={quantity >= product.stock_quantity}
                       className={`p-1.5 rounded transition-colors ${quantity >= product.stock_quantity ? 'opacity-40 cursor-not-allowed' : 'hover:bg-bg-primary hover:text-brand-caramel text-text-secondary'}`}
                     >
@@ -167,7 +199,7 @@ export default function CartPage() {
                 </div>
               </div>
             </GlassCard>
-          ))}
+          )})}
         </div>
 
         {/* Order Summary */}
@@ -200,20 +232,22 @@ export default function CartPage() {
                 <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-3">Select Payment Mode</label>
                 <div className="flex flex-col gap-2.5">
                   {/* Pay Later */}
-                  <label className={`relative flex cursor-pointer rounded-xl border p-3.5 shadow-sm transition-all duration-200 ${paymentMode === 'ledger' ? 'bg-brand-caramel/10 border-brand-caramel scale-[1.02]' : 'bg-bg-tertiary/50 border-border-light hover:bg-bg-tertiary hover:border-brand-caramel/30'}`}>
-                    <input type="radio" name="payment_mode" value="ledger" checked={paymentMode === 'ledger'} onChange={(e) => setPaymentMode(e.target.value)} className="sr-only" />
-                    <div className="flex w-full items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`flex items-center justify-center w-5 h-5 rounded-full border shadow-sm ${paymentMode === 'ledger' ? 'border-brand-caramel bg-brand-caramel' : 'border-text-muted bg-transparent'}`}>
-                          {paymentMode === 'ledger' && <div className="w-2 h-2 rounded-full bg-white animate-in zoom-in duration-200"></div>}
-                        </div>
-                        <div>
-                          <span className={`block text-sm font-bold ${paymentMode === 'ledger' ? 'text-brand-caramel' : 'text-text-primary'}`}>Pay Later</span>
-                          <span className="block text-[10px] text-text-secondary mt-0.5">Add this order to your pending dues</span>
+                  {companyAllowPayLater && (
+                    <label className={`relative flex cursor-pointer rounded-xl border p-3.5 shadow-sm transition-all duration-200 ${paymentMode === 'ledger' ? 'bg-brand-caramel/10 border-brand-caramel scale-[1.02]' : 'bg-bg-tertiary/50 border-border-light hover:bg-bg-tertiary hover:border-brand-caramel/30'}`}>
+                      <input type="radio" name="payment_mode" value="ledger" checked={paymentMode === 'ledger'} onChange={(e) => setPaymentMode(e.target.value)} className="sr-only" />
+                      <div className="flex w-full items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex items-center justify-center w-5 h-5 rounded-full border shadow-sm ${paymentMode === 'ledger' ? 'border-brand-caramel bg-brand-caramel' : 'border-text-muted bg-transparent'}`}>
+                            {paymentMode === 'ledger' && <div className="w-2 h-2 rounded-full bg-white animate-in zoom-in duration-200"></div>}
+                          </div>
+                          <div>
+                            <span className={`block text-sm font-bold ${paymentMode === 'ledger' ? 'text-brand-caramel' : 'text-text-primary'}`}>Pay Later</span>
+                            <span className="block text-[10px] text-text-secondary mt-0.5">Add this order to your pending dues</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </label>
+                    </label>
+                  )}
 
                   {/* Cash on Delivery */}
                   <label className={`relative flex cursor-pointer rounded-xl border p-3.5 shadow-sm transition-all duration-200 ${paymentMode === 'cod' ? 'bg-brand-pistachio/10 border-brand-pistachio scale-[1.02]' : 'bg-bg-tertiary/50 border-border-light hover:bg-bg-tertiary hover:border-brand-pistachio/30'}`}>

@@ -60,7 +60,8 @@ export default function Companies() {
     shop_name: '',
     owner_name: '',
     phone: '',
-    address: ''
+    address: '',
+    allow_pay_later: true
   });
   
   const [logoFile, setLogoFile] = useState(null);
@@ -217,7 +218,8 @@ export default function Companies() {
             owner_name: newCompany.owner_name,
             phone: newCompany.phone,
             address: newCompany.address,
-            role: 'company'
+            role: 'company',
+            allow_pay_later: newCompany.allow_pay_later
           }
         }
       });
@@ -258,7 +260,7 @@ export default function Companies() {
 
         setIsAddModalOpen(false);
       }
-      setNewCompany({ email: '', password: '', shop_name: '', owner_name: '', phone: '', address: '' });
+      setNewCompany({ email: '', password: '', shop_name: '', owner_name: '', phone: '', address: '', allow_pay_later: true });
       
       await logSuperAdminAction({
         type: 'COMPANY',
@@ -287,7 +289,8 @@ export default function Companies() {
       email: company.email || '',
       phone: company.phone || '',
       address: company.address || '',
-      logo_url: company.logo_url || ''
+      logo_url: company.logo_url || '',
+      allow_pay_later: company.allow_pay_later ?? true
     });
     setLogoFile(null);
     setLogoPreview(company.logo_url || null);
@@ -301,11 +304,11 @@ export default function Companies() {
     setErrorMsg('');
     try {
       const updateData = {
-          shop_name: editingCompany.shop_name,
-          owner_name: editingCompany.owner_name,
-          email: editingCompany.email,
-          phone: editingCompany.phone,
-          address: editingCompany.address
+        shop_name: editingCompany.shop_name,
+        owner_name: editingCompany.owner_name,
+        phone: editingCompany.phone,
+        address: editingCompany.address,
+        allow_pay_later: editingCompany.allow_pay_later
       };
 
       if (logoFile) {
@@ -1335,6 +1338,25 @@ export default function Companies() {
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <div className="mt-4">
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <div className="relative">
+                                            <input 
+                                                type="checkbox" 
+                                                className="sr-only"
+                                                checked={newCompany.allow_pay_later}
+                                                onChange={e => setNewCompany({...newCompany, allow_pay_later: e.target.checked})}
+                                            />
+                                            <div className={`block w-10 h-6 rounded-full transition-colors ${newCompany.allow_pay_later ? 'bg-red-500' : 'bg-gray-200'}`}></div>
+                                            <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${newCompany.allow_pay_later ? 'transform translate-x-4' : ''}`}></div>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-800">Allow Pay Later functionality</p>
+                                            <p className="text-xs text-gray-500">Enable udhaar/pay later for this company</p>
+                                        </div>
+                                    </label>
+                                </div>
 
                                 <div className="pt-6">
                                     <button 
@@ -1505,6 +1527,25 @@ export default function Companies() {
                                             placeholder="Enter full address"
                                         ></textarea>
                                     </div>
+                                </div>
+                                
+                                <div className="mt-4">
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <div className="relative">
+                                            <input 
+                                                type="checkbox" 
+                                                className="sr-only"
+                                                checked={editingCompany.allow_pay_later ?? true}
+                                                onChange={e => setEditingCompany({...editingCompany, allow_pay_later: e.target.checked})}
+                                            />
+                                            <div className={`block w-10 h-6 rounded-full transition-colors ${editingCompany.allow_pay_later ?? true ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+                                            <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${editingCompany.allow_pay_later ?? true ? 'transform translate-x-4' : ''}`}></div>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-800">Allow Pay Later functionality</p>
+                                            <p className="text-xs text-gray-500">Enable udhaar/pay later for this company</p>
+                                        </div>
+                                    </label>
                                 </div>
 
                                 <div className="pt-6">

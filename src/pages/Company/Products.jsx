@@ -4,7 +4,9 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
-import { Package, Plus, Edit2, Trash2, X, Check, Search, Image as ImageIcon, Upload, Filter, AlertCircle, ShoppingBag, FolderTree, ChevronDown, ChevronLeft, ChevronRight, ToggleRight, Ban, AlertTriangle, Pen, Trash, SlidersHorizontal } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { Package, Plus, Edit2, Trash2, X, Check, Search, Image as ImageIcon, Upload, Filter, AlertCircle, ShoppingBag, FolderTree, ChevronDown, ChevronLeft, ChevronRight, ToggleRight, Ban, AlertTriangle, Pen, Trash, SlidersHorizontal, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { logCompanyAction } from '../../lib/logger';
 
@@ -44,7 +46,13 @@ export default function ProductManagement() {
     category_id: '',
     stock_quantity: '',
     image_url: '',
-    is_active: true
+    is_active: true,
+    scheme_type: 'none',
+    scheme_value: '',
+    scheme_buy_qty: '',
+    scheme_get_qty: '',
+    scheme_start_date: '',
+    scheme_end_date: ''
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
@@ -107,7 +115,13 @@ export default function ProductManagement() {
         category_id: product.category_id,
         stock_quantity: product.stock_quantity,
         image_url: product.image_url || '',
-        is_active: product.is_active
+        is_active: product.is_active,
+        scheme_type: product.scheme_type || 'none',
+        scheme_value: product.scheme_value || '',
+        scheme_buy_qty: product.scheme_buy_qty || '',
+        scheme_get_qty: product.scheme_get_qty || '',
+        scheme_start_date: product.scheme_start_date || '',
+        scheme_end_date: product.scheme_end_date || ''
       });
       setImagePreview(product.image_url || '');
     } else {
@@ -120,7 +134,13 @@ export default function ProductManagement() {
         category_id: categories.length > 0 ? categories[0].id : '',
         stock_quantity: '',
         image_url: '',
-        is_active: true
+        is_active: true,
+        scheme_type: 'none',
+        scheme_value: '',
+        scheme_buy_qty: '',
+        scheme_get_qty: '',
+        scheme_start_date: '',
+        scheme_end_date: ''
       });
       setImagePreview('');
     }
@@ -172,9 +192,34 @@ export default function ProductManagement() {
     }
 
     if (formData.stock_quantity === '' || formData.stock_quantity === null) {
-      errors.stock_quantity = 'Stock is required';
+      errors.stock_quantity = 'Stock quantity is required';
     } else if (parseInt(formData.stock_quantity, 10) < 0) {
-      errors.stock_quantity = 'Stock cannot be negative';
+      errors.stock_quantity = 'Stock must be 0 or greater';
+    }
+
+    if (formData.scheme_type === 'percentage') {
+      if (!formData.scheme_value || formData.scheme_value <= 0 || formData.scheme_value > 100) {
+        errors.scheme_value = 'Percentage must be between 1 and 100';
+      }
+    } else if (formData.scheme_type === 'flat') {
+      if (!formData.scheme_value || formData.scheme_value <= 0) {
+        errors.scheme_value = 'Flat discount must be greater than 0';
+      } else if (parseFloat(formData.scheme_value) > parseFloat(formData.price)) {
+        errors.scheme_value = 'Discount cannot exceed product price';
+      }
+    } else if (formData.scheme_type === 'bogo') {
+      if (!formData.scheme_buy_qty || formData.scheme_buy_qty <= 0) {
+        errors.scheme_buy_qty = 'Buy quantity must be > 0';
+      }
+      if (!formData.scheme_get_qty || formData.scheme_get_qty <= 0) {
+        errors.scheme_get_qty = 'Get quantity must be > 0';
+      }
+    }
+
+    if (formData.scheme_start_date && formData.scheme_end_date) {
+      if (new Date(formData.scheme_start_date) > new Date(formData.scheme_end_date)) {
+        errors.scheme_end_date = 'End date cannot be before start date';
+      }
     }
 
     if (Object.keys(errors).length > 0) {
@@ -196,7 +241,13 @@ export default function ProductManagement() {
         ...formData,
         price: parseFloat(formData.price),
         stock_quantity: parseInt(formData.stock_quantity, 10),
-        image_url: finalImageUrl
+        image_url: finalImageUrl,
+        scheme_type: formData.scheme_type,
+        scheme_value: formData.scheme_value ? parseFloat(formData.scheme_value) : 0,
+        scheme_buy_qty: formData.scheme_buy_qty ? parseInt(formData.scheme_buy_qty, 10) : 0,
+        scheme_get_qty: formData.scheme_get_qty ? parseInt(formData.scheme_get_qty, 10) : 0,
+        scheme_start_date: formData.scheme_start_date || null,
+        scheme_end_date: formData.scheme_end_date || null
       };
 
       if (editingProduct) {
@@ -630,8 +681,17 @@ export default function ProductManagement() {
                       )}
                     </div>
                     <div>
-                      <h4 className="text-[14px] font-[700] text-gray-800 mb-0.5">{product.name}</h4>
-                      <span className="text-[12px] text-gray-400">SKU: MHV-{product.id.toString().substring(0, 4)}</span>
+                      <h4 className="text-[14px] font-[700] text-gray-800 mb-0.5 truncate max-w-[200px] md:max-w-[250px]">{product.name}</h4>
+                      <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-1.5 md:gap-2">
+                        <span className="text-[12px] text-gray-400 shrink-0">SKU: MHV-{product.id.toString().substring(0, 4)}</span>
+                        {product.scheme_type && product.scheme_type !== 'none' && (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm whitespace-nowrap uppercase tracking-wide w-max">
+                            {product.scheme_type === 'percentage' && `${product.scheme_value}% OFF`}
+                            {product.scheme_type === 'flat' && `₹${product.scheme_value} OFF`}
+                            {product.scheme_type === 'bogo' && `BUY ${product.scheme_buy_qty} GET ${product.scheme_get_qty} FREE`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -656,13 +716,15 @@ export default function ProductManagement() {
 
                   <div className="flex justify-between md:block mb-3 md:mb-0">
                     <span className="md:hidden text-[12px] font-[700] text-gray-500 uppercase">Status:</span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleStatus(product.id, product.is_active); }}
-                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-[700] transition-colors ${product.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${product.is_active ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
-                      {product.is_active ? 'ACTIVE' : 'DEACTIVE'}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleStatus(product.id, product.is_active); }}
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-[700] transition-colors ${product.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${product.is_active ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
+                        {product.is_active ? 'Active' : 'Inactive'}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="absolute top-4 right-4 md:relative md:top-auto md:right-auto flex gap-2 justify-end">
@@ -858,6 +920,134 @@ export default function ProductManagement() {
                       className="w-3.5 h-3.5 rounded border-border-light bg-bg-primary focus:ring-brand-caramel text-brand-caramel"
                     />
                     <label htmlFor="is_active" className="text-xs font-medium text-text-secondary">Active</label>
+                  </div>
+
+                  <div className="pt-4 border-t border-border-light mt-4">
+                    <h4 className="text-sm font-semibold text-slate-800 mb-3">Special Scheme / Offers</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-text-secondary mb-2">Scheme Type</label>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {[
+                            { id: 'none', label: 'No Offer', icon: '🚫' },
+                            { id: 'percentage', label: 'Percentage (%)', icon: '🔥' },
+                            { id: 'flat', label: 'Flat (₹)', icon: '✨' },
+                            { id: 'bogo', label: 'BOGO', icon: '🎁' }
+                          ].map(option => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, scheme_type: option.id })}
+                              className={`flex items-center justify-center gap-1.5 p-2.5 rounded-lg border text-xs font-medium transition-all ${
+                                formData.scheme_type === option.id 
+                                ? 'bg-red-50 border-red-500 text-red-600 shadow-[0_2px_8px_rgba(227,24,55,0.15)]' 
+                                : 'bg-bg-tertiary border-border-light text-text-secondary hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <span>{option.icon}</span>
+                              <span>{option.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {(formData.scheme_type === 'percentage' || formData.scheme_type === 'flat') && (
+                        <div>
+                          <label className="block text-xs font-medium text-text-secondary mb-1">
+                            {formData.scheme_type === 'percentage' ? 'Discount Percentage (%)' : 'Discount Amount (₹)'}
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max={formData.scheme_type === 'percentage' ? "100" : undefined}
+                            step={formData.scheme_type === 'percentage' ? '0.1' : '1'}
+                            value={formData.scheme_value}
+                            onChange={e => { 
+                              let val = e.target.value;
+                              if (formData.scheme_type === 'percentage' && parseFloat(val) > 100) {
+                                val = '100';
+                              }
+                              setFormData({ ...formData, scheme_value: val }); 
+                              setFieldErrors({ ...fieldErrors, scheme_value: null }); 
+                            }}
+                            className={`w-full bg-bg-tertiary border ${fieldErrors.scheme_value ? 'border-red-500' : 'border-border-light'} text-text-primary text-sm rounded-lg focus:ring-brand-caramel focus:border-brand-caramel p-2.5 outline-none transition-all`}
+                            placeholder={formData.scheme_type === 'percentage' ? 'e.g. 10' : 'e.g. 50'}
+                          />
+                          {fieldErrors.scheme_value && <p className="mt-1 text-xs text-red-500">{fieldErrors.scheme_value}</p>}
+                        </div>
+                      )}
+
+                      {formData.scheme_type === 'bogo' && (
+                        <>
+                          <div>
+                            <label className="block text-xs font-medium text-text-secondary mb-1">Buy Quantity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={formData.scheme_buy_qty}
+                              onChange={e => { setFormData({ ...formData, scheme_buy_qty: e.target.value }); setFieldErrors({ ...fieldErrors, scheme_buy_qty: null }); }}
+                              className={`w-full bg-bg-tertiary border ${fieldErrors.scheme_buy_qty ? 'border-red-500' : 'border-border-light'} text-text-primary text-sm rounded-lg focus:ring-brand-caramel focus:border-brand-caramel p-2.5 outline-none transition-all`}
+                              placeholder="e.g. 2"
+                            />
+                            {fieldErrors.scheme_buy_qty && <p className="mt-1 text-xs text-red-500">{fieldErrors.scheme_buy_qty}</p>}
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-text-secondary mb-1">Get Free Quantity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={formData.scheme_get_qty}
+                              onChange={e => { setFormData({ ...formData, scheme_get_qty: e.target.value }); setFieldErrors({ ...fieldErrors, scheme_get_qty: null }); }}
+                              className={`w-full bg-bg-tertiary border ${fieldErrors.scheme_get_qty ? 'border-red-500' : 'border-border-light'} text-text-primary text-sm rounded-lg focus:ring-brand-caramel focus:border-brand-caramel p-2.5 outline-none transition-all`}
+                              placeholder="e.g. 1"
+                            />
+                            {fieldErrors.scheme_get_qty && <p className="mt-1 text-xs text-red-500">{fieldErrors.scheme_get_qty}</p>}
+                          </div>
+                        </>
+                      )}
+
+                      {formData.scheme_type !== 'none' && (
+                        <>
+                          <div className="relative">
+                            <label className="block text-xs font-medium text-text-secondary mb-1">Start Date (Optional)</label>
+                            <DatePicker
+                              selected={formData.scheme_start_date ? new Date(formData.scheme_start_date) : null}
+                              onChange={date => {
+                                const dateStr = date ? new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split('T')[0] : '';
+                                setFormData({ ...formData, scheme_start_date: dateStr });
+                                setFieldErrors({ ...fieldErrors, scheme_start_date: null });
+                              }}
+                              dateFormat="MMM d, yyyy"
+                              placeholderText="Select start date"
+                              className="w-full bg-bg-tertiary border border-border-light text-text-primary text-sm rounded-lg focus:ring-brand-caramel focus:border-brand-caramel p-2.5 outline-none transition-all"
+                              wrapperClassName="w-full"
+                              showPopperArrow={false}
+                            />
+                            <Calendar className="absolute right-3 top-[28px] text-gray-400 pointer-events-none" size={16} />
+                          </div>
+                          <div className="relative">
+                            <label className="block text-xs font-medium text-text-secondary mb-1">End Date (Optional)</label>
+                            <DatePicker
+                              selected={formData.scheme_end_date ? new Date(formData.scheme_end_date) : null}
+                              onChange={date => {
+                                const dateStr = date ? new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split('T')[0] : '';
+                                setFormData({ ...formData, scheme_end_date: dateStr });
+                                setFieldErrors({ ...fieldErrors, scheme_end_date: null });
+                              }}
+                              minDate={formData.scheme_start_date ? new Date(formData.scheme_start_date) : null}
+                              dateFormat="MMM d, yyyy"
+                              placeholderText="Select end date"
+                              className={`w-full bg-bg-tertiary border ${fieldErrors.scheme_end_date ? 'border-red-500' : 'border-border-light'} text-text-primary text-sm rounded-lg focus:ring-brand-caramel focus:border-brand-caramel p-2.5 outline-none transition-all`}
+                              wrapperClassName="w-full"
+                              showPopperArrow={false}
+                            />
+                            <Calendar className="absolute right-3 top-[28px] text-gray-400 pointer-events-none" size={16} />
+                            {fieldErrors.scheme_end_date && <p className="mt-1 text-xs text-red-500">{fieldErrors.scheme_end_date}</p>}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex gap-2 justify-end pt-3 border-t border-border-light mt-4">

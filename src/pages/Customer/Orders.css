@@ -490,14 +490,15 @@
         width: 100%;
         display: flex;
         flex-direction: row;
+        flex-wrap: wrap;
         gap: 8px;
     }
     .order-btn { 
-        flex: 1;
-        width: 100%; 
+        flex: 1 1 45%;
+        width: auto; 
         justify-content: center; 
-        padding: 8px 10px;
-        font-size: 12px;
+        padding: 10px 10px;
+        font-size: 13px;
         gap: 6px;
     }
     .order-btn-ghost { margin-right: 0; }

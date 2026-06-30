@@ -5,9 +5,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
-import { Users, CheckCircle, XCircle, Search, MapPin, Phone, Store, BarChart2, LayoutGrid, List, UserPlus, Share2, Edit, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Search, MapPin, Phone, Store, BarChart2, LayoutGrid, List, UserPlus, Share2, Edit, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight, Key } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { logCompanyAction } from '../../lib/logger';
+import toast from 'react-hot-toast';
 
 export default function CustomerManagement() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function CustomerManagement() {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [newCustomer, setNewCustomer] = useState({
@@ -36,7 +38,6 @@ export default function CustomerManagement() {
     address: ''
   });
   const [editCustomer, setEditCustomer] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
   const [newPhoneError, setNewPhoneError] = useState('');
   const [editPhoneError, setEditPhoneError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -425,8 +426,8 @@ export default function CustomerManagement() {
                     </div>
                   </div>
                   
-                  <div className="flex flex-col items-end gap-2 shrink-0 ml-2">
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-col items-end gap-2 shrink-0 ml-2">
+                      <div className="flex items-center gap-1">
                       <button 
                         onClick={(e) => { e.stopPropagation(); openEditModal(customer); }}
                         className="p-1.5 rounded-md text-text-secondary hover:text-brand-caramel hover:bg-brand-caramel/10 transition-colors"
@@ -656,12 +657,13 @@ export default function CustomerManagement() {
             className="bg-bg-secondary border border-border-light rounded-xl p-6 w-full max-w-lg shadow-2xl"
           >
             <h2 className="text-xl font-bold text-text-primary mb-4">Add New Customer</h2>
-            <form onSubmit={handleAddCustomer} className="space-y-4">
+            <form onSubmit={handleAddCustomer} className="space-y-4" autoComplete="off">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">Email</label>
                   <input
                     type="email"
+                    autoComplete="new-password"
                     value={newCustomer.email}
                     onChange={(e) => { setNewCustomer({...newCustomer, email: e.target.value}); setFieldErrors({...fieldErrors, email: null}); }}
                     className={`w-full bg-bg-primary border ${fieldErrors.email ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}
@@ -674,6 +676,7 @@ export default function CustomerManagement() {
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
                       value={newCustomer.password}
                       onChange={(e) => { setNewCustomer({...newCustomer, password: e.target.value}); setFieldErrors({...fieldErrors, password: null}); }}
                       className={`w-full bg-bg-primary border ${fieldErrors.password ? 'border-red-500' : 'border-border-light'} rounded-lg px-4 py-2 pr-10 text-text-primary focus:outline-none focus:border-brand-caramel transition-colors`}

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/useAuthStore';
 
 // Layouts
@@ -7,6 +8,7 @@ import AuthLayout from './layouts/AuthLayout';
 import CompanyLayout from './layouts/CompanyLayout';
 import CustomerLayout from './layouts/CustomerLayout';
 import SuperAdminLayout from './layouts/SuperAdminLayout';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Auth Pages
 import Login from './pages/Auth/Login';
@@ -96,8 +98,9 @@ function App() {
 
   return (
     <Router>
+      <Toaster position="top-center" reverseOrder={false} />
       <Routes>
-        {/* Public Routes */}
+        {/* Auth Routes */}
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -106,11 +109,7 @@ function App() {
         </Route>
 
         {/* Super Admin Routes */}
-        <Route path="/admin" element={
-          <ProtectedRoute allowedRole="super_admin">
-            <SuperAdminLayout />
-          </ProtectedRoute>
-        }>
+        <Route path="/admin" element={<ProtectedRoute allowedRole="super_admin"><SuperAdminLayout /></ProtectedRoute>}>
           <Route index element={<SuperAdminDashboard />} />
           <Route path="companies" element={<SuperAdminCompanies />} />
           <Route path="customers" element={<SuperAdminCustomers />} />
@@ -118,41 +117,32 @@ function App() {
           <Route path="orders/:id" element={<SuperAdminOrderDetail />} />
           <Route path="invoices" element={<SuperAdminInvoices />} />
           <Route path="analytics" element={<SuperAdminAnalytics />} />
-          <Route path="audit-logs" element={<SuperAdminAuditTrail />} />
+          <Route path="audit" element={<SuperAdminAuditTrail />} />
           <Route path="settings" element={<SuperAdminSettings />} />
         </Route>
 
         {/* Company Routes */}
-        <Route path="/company" element={
-          <ProtectedRoute allowedRole="company">
-            <CompanyLayout />
-          </ProtectedRoute>
-        }>
+        <Route path="/company" element={<ProtectedRoute allowedRole="company"><CompanyLayout /></ProtectedRoute>}>
           <Route index element={<CompanyDashboard />} />
           <Route path="products" element={<ProductManagement />} />
           <Route path="orders" element={<OrderManagement />} />
           <Route path="customers" element={<CustomerManagement />} />
-          <Route path="customers/:id" element={<CustomerDetail />} />
+          <Route path="customers/:id" element={<ErrorBoundary><CustomerDetail /></ErrorBoundary>} />
           <Route path="payments" element={<PaymentManagement />} />
           <Route path="logs" element={<CompanyLogs />} />
           <Route path="settings" element={<CompanySettings />} />
         </Route>
 
         {/* Customer Routes */}
-        <Route path="/customer" element={
-          <ProtectedRoute allowedRole="customer">
-            <CustomerLayout />
-          </ProtectedRoute>
-        }>
+        <Route path="/customer" element={<ProtectedRoute allowedRole="customer"><CustomerLayout /></ProtectedRoute>}>
           <Route index element={<CustomerDashboard />} />
           <Route path="catalog" element={<ProductCatalog />} />
           <Route path="cart" element={<CartPage />} />
           <Route path="orders" element={<MyOrders />} />
-          <Route path="payments" element={<CustomerPayments />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="payments" element={<CustomerPayments />} />
         </Route>
 
-        {/* Fallback */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

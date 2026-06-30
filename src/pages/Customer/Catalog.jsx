@@ -197,19 +197,60 @@ export default function ProductCatalog() {
                 {filteredProducts.map((product) => {
                     const cartItem = cartItems.find(item => item.product.id === product.id);
                     const isOutOfStock = product.stock_quantity === 0;
+
+                    // Offer Validation
+                    const isOfferValid = () => {
+                        if (!product.scheme_type || product.scheme_type === 'none') return false;
+                        const now = new Date();
+                        now.setHours(0, 0, 0, 0);
+                        if (product.scheme_start_date) {
+                            const start = new Date(product.scheme_start_date);
+                            start.setHours(0, 0, 0, 0);
+                            if (now < start) return false;
+                        }
+                        if (product.scheme_end_date) {
+                            const end = new Date(product.scheme_end_date);
+                            end.setHours(0, 0, 0, 0);
+                            if (now > end) return false;
+                        }
+                        return true;
+                    };
+                    const hasValidOffer = isOfferValid();
+
+                    // Price Calculation for flat/percentage
+                    let finalPrice = product.price;
+                    if (hasValidOffer) {
+                        if (product.scheme_type === 'percentage') {
+                            finalPrice = Math.max(0, product.price * (1 - (product.scheme_value / 100)));
+                        } else if (product.scheme_type === 'flat') {
+                            finalPrice = Math.max(0, product.price - product.scheme_value);
+                        }
+                    }
+                    finalPrice = Math.round(finalPrice * 100) / 100;
+
                     return (
                         <div key={product.id} className="bg-white rounded-[16px] overflow-hidden shadow-[0_2px_8px_rgba(93,64,55,0.06)] border border-[#f0e6d8] transition-all duration-400 hover:-translate-y-2 hover:shadow-[0_16px_48px_rgba(93,64,55,0.14)] hover:border-red-600/20 relative flex flex-col group">
                             
                             {/* Badges */}
-                            {isOutOfStock ? (
-                                <span className="absolute top-3.5 left-3.5 px-3.5 py-1.5 bg-gray-600 text-white rounded-full text-[11px] font-bold uppercase tracking-wide z-10 shadow-lg">
-                                    Out of Stock
-                                </span>
-                            ) : product.stock_quantity < 10 ? (
-                                <span className="absolute top-3.5 left-3.5 px-3.5 py-1.5 bg-gradient-to-br from-amber-500 to-[#d97706] text-white rounded-full text-[11px] font-bold uppercase tracking-wide z-10 shadow-[0_4px_12px_rgba(245,158,11,0.3)]">
-                                    Only {product.stock_quantity} left
-                                </span>
-                            ) : null}
+                            <div className="absolute top-3.5 left-3.5 flex flex-col gap-2 z-10">
+                                {isOutOfStock ? (
+                                    <span className="px-3.5 py-1.5 bg-gray-600 text-white rounded-full text-[11px] font-bold uppercase tracking-wide shadow-lg">
+                                        Out of Stock
+                                    </span>
+                                ) : product.stock_quantity < 10 ? (
+                                    <span className="px-3.5 py-1.5 bg-gradient-to-br from-amber-500 to-[#d97706] text-white rounded-full text-[11px] font-bold uppercase tracking-wide shadow-[0_4px_12px_rgba(245,158,11,0.3)]">
+                                        Only {product.stock_quantity} left
+                                    </span>
+                                ) : null}
+
+                                {hasValidOffer && (
+                                    <span className="px-3.5 py-1.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full text-[10px] font-bold uppercase tracking-wide shadow-[0_4px_12px_rgba(227,24,55,0.3)] border border-red-400 text-center">
+                                        {product.scheme_type === 'percentage' && `🔥 ${product.scheme_value}% OFF`}
+                                        {product.scheme_type === 'flat' && `✨ ₹${product.scheme_value} OFF`}
+                                        {product.scheme_type === 'bogo' && `🎁 BUY ${product.scheme_buy_qty} GET ${product.scheme_get_qty} FREE`}
+                                    </span>
+                                )}
+                            </div>
 
                             {/* Product Image */}
                             <div className="h-[180px] md:h-[220px] overflow-hidden relative bg-gradient-to-br from-[#fff8f0] to-[#fef3e6] shrink-0">
@@ -227,7 +268,12 @@ export default function ProductCatalog() {
                             <div className="p-[14px] md:p-[18px] flex flex-col flex-1">
                                 <div className="flex justify-between items-start mb-1.5 gap-2">
                                     <h4 className="text-[14px] md:text-[15px] font-bold text-slate-900 leading-[1.3] flex-1 line-clamp-2">{product.name}</h4>
-                                    <span className="text-[16px] md:text-[18px] font-extrabold text-red-600 whitespace-nowrap"><span className="text-[12px] md:text-[13px] font-semibold">₹</span>{product.price}</span>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[16px] md:text-[18px] font-extrabold text-red-600 whitespace-nowrap"><span className="text-[12px] md:text-[13px] font-semibold">₹</span>{finalPrice}</span>
+                                        {hasValidOffer && (product.scheme_type === 'percentage' || product.scheme_type === 'flat') && (
+                                            <span className="text-[11px] font-medium text-gray-400 line-through">₹{product.price}</span>
+                                        )}
+                                    </div>
                                 </div>
                                 
                                 <span className="inline-block px-2.5 py-1 bg-[#fff8f0] text-[#5d4037] rounded-[20px] text-[10px] md:text-[11px] font-semibold mb-2 w-fit">

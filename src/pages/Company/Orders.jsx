@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Search, ChevronDown, Check, Clock, Truck, Package, ClipboardCheck, ChevronRight, User, CreditCard, Banknote, ChevronLeft } from 'lucide-react';
 import InvoiceModal from '../../components/ui/InvoiceModal';
+import OrderEditModal from '../../components/ui/OrderEditModal';
 import { logCompanyAction } from '../../lib/logger';
 
 function OrderStatusPath({ order, onUpdateStatus }) {
@@ -159,6 +160,7 @@ export default function OrderManagement() {
   const [sortBy, setSortBy] = useState('newest');
   const [fetchError, setFetchError] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [editingOrder, setEditingOrder] = useState(null);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -174,9 +176,11 @@ export default function OrderManagement() {
           *,
           profiles:customer_id (shop_name, owner_name, phone, address),
           order_items (
+            id,
+            product_id,
             quantity,
             price_at_order,
-            products (name, image_url, unit)
+            products (id, name, image_url, unit, stock_quantity)
           )
         `)
         .eq('company_id', user.id)
@@ -434,6 +438,11 @@ export default function OrderManagement() {
                                {order.payment_method === 'cod' ? <><Banknote size={14}/> COD</> : order.payment_method === 'upi' ? <><CreditCard size={14}/> UPI</> : <><Clock size={14}/> Pay Later</>}
                             </div>
                             
+                            {order.status === 'pending' && (
+                                <button onClick={() => setEditingOrder(order)} className="px-4 py-1.5 border border-gray-200 rounded-lg bg-white text-gray-700 text-[13px] font-[600] cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-300 whitespace-nowrap">
+                                    Edit Order
+                                </button>
+                            )}
                             <button onClick={() => setSelectedInvoice(order)} className="px-4 py-1.5 border border-gray-200 rounded-lg bg-white text-red-600 text-[13px] font-[600] cursor-pointer transition-all hover:bg-red-50 hover:border-red-600 whitespace-nowrap">
                                 View Details
                             </button>
@@ -481,6 +490,17 @@ export default function OrderManagement() {
             <ChevronRight size={18} />
           </button>
         </div>
+      )}
+
+      {editingOrder && (
+        <OrderEditModal 
+          order={editingOrder} 
+          onClose={() => setEditingOrder(null)} 
+          onSave={() => {
+            setEditingOrder(null);
+            fetchOrders();
+          }}
+        />
       )}
 
       {selectedInvoice && (

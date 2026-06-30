@@ -1,18 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useLedgerStore } from '../../store/useLedgerStore';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import './Payments.css';
 
 export default function CustomerPayments() {
   const user = useAuthStore(state => state.user);
   const profile = useAuthStore(state => state.profile);
-  const [payments, setPayments] = useState([]);
-  const [balance, setBalance] = useState({ billed: 0, paid: 0, outstanding: 0 });
-  const [loading, setLoading] = useState(true);
+  const { payments, balance, loading, fetchLedger } = useLedgerStore();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [companyAllowPayLater, setCompanyAllowPayLater] = useState(true);
+
+  useEffect(() => {
+    if (profile?.company_id) {
+      supabase.from('profiles').select('allow_pay_later').eq('id', profile.company_id).single()
+        .then(({ data }) => {
+           if (data) setCompanyAllowPayLater(data.allow_pay_later ?? true);
+        });
+    }
+  }, [profile?.company_id]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -40,52 +49,11 @@ export default function CustomerPayments() {
   });
 
 
-  const fetchLedger = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      // 1. Fetch all valid orders to calculate total billed
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select('total_amount')
-        .eq('customer_id', user.id)
-        .neq('status', 'cancelled');
-
-      if (ordersError) throw ordersError;
-
-      // 2. Fetch all payments
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('customer_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (paymentsError) throw paymentsError;
-
-      const totalBilled = orders?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
-      
-      // Only VERIFIED payments reduce the outstanding balance
-      const totalPaid = paymentsData
-        ?.filter(p => p.status === 'verified')
-        .reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-
-      setBalance({
-        billed: totalBilled,
-        paid: totalPaid,
-        outstanding: totalBilled - totalPaid
-      });
-
-      setPayments(paymentsData || []);
-    } catch (err) {
-      console.error('Error fetching ledger:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchLedger();
-  }, [user]);
+    if (user) {
+      fetchLedger(user.id);
+    }
+  }, [user, fetchLedger]);
 
   const handleSubmitPayment = async (e) => {
     e.preventDefault();
@@ -108,7 +76,9 @@ export default function CustomerPayments() {
       if (error) throw error;
 
       setNewPayment({ amount: '', payment_method: 'upi', reference_id: '', notes: '' });
-      fetchLedger();
+      alert('Payment submitted successfully! It is pending verification.');
+      // Refetch ledger to update the state with the new payment
+      fetchLedger(user.id, true);
     } catch (error) {
       console.error('Error submitting payment:', error);
       alert('Failed to submit payment entry.');
@@ -153,83 +123,85 @@ export default function CustomerPayments() {
                     </div>
 
                     {/* Payment Form */}
-                    <div className="form-card">
-                        <div className="form-title">Log a Payment</div>
-                        <form onSubmit={handleSubmitPayment}>
-                            <div className="form-group">
-                                <label className="form-label">Amount Paid (₹) <span className="required">*</span></label>
-                                <input 
-                                    type="number" 
-                                    className="form-input" 
-                                    placeholder="e.g. 5000"
-                                    required
-                                    min="1"
-                                    value={newPayment.amount}
-                                    onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
-                                />
-                            </div>
-                            <div className="form-group relative" ref={dropdownRef}>
-                                <label className="form-label">Payment Method <span className="required">*</span></label>
-                                <div 
-                                    className={`form-input form-select flex items-center justify-between ${isDropdownOpen ? 'border-[#E31837] shadow-[0_0_0_4px_rgba(227,24,55,0.15)]' : ''}`}
-                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                >
-                                    <span>{paymentOptions.find(opt => opt.value === newPayment.payment_method)?.label}</span>
+                    {companyAllowPayLater && (
+                        <div className="form-card">
+                            <div className="form-title">Log a Payment</div>
+                            <form onSubmit={handleSubmitPayment}>
+                                <div className="form-group">
+                                    <label className="form-label">Amount Paid (₹) <span className="required">*</span></label>
+                                    <input 
+                                        type="number" 
+                                        className="form-input" 
+                                        placeholder="e.g. 5000"
+                                        required
+                                        min="1"
+                                        value={newPayment.amount}
+                                        onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
+                                    />
+                                </div>
+                                <div className="form-group relative" ref={dropdownRef}>
+                                    <label className="form-label">Payment Method <span className="required">*</span></label>
+                                    <div 
+                                        className={`form-input form-select flex items-center justify-between ${isDropdownOpen ? 'border-[#E31837] shadow-[0_0_0_4px_rgba(227,24,55,0.15)]' : ''}`}
+                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                    >
+                                        <span>{paymentOptions.find(opt => opt.value === newPayment.payment_method)?.label}</span>
+                                    </div>
+                                    
+                                    {isDropdownOpen && (
+                                        <div className="absolute z-50 w-full mt-2 bg-white border border-[#E31837]/10 rounded-xl shadow-[0_12px_40px_rgba(227,24,55,0.08)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                            {paymentOptions.map((option) => (
+                                                <div 
+                                                    key={option.value}
+                                                    className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors ${
+                                                        newPayment.payment_method === option.value 
+                                                        ? 'bg-[rgba(227,24,55,0.06)] text-[#E31837]' 
+                                                        : 'text-[#4A4A68] hover:bg-[#FFF5F5] hover:text-[#E31837]'
+                                                    }`}
+                                                    onClick={() => {
+                                                        setNewPayment({...newPayment, payment_method: option.value});
+                                                        setIsDropdownOpen(false);
+                                                    }}
+                                                >
+                                                    {option.label}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                                 
-                                {isDropdownOpen && (
-                                    <div className="absolute z-50 w-full mt-2 bg-white border border-[#E31837]/10 rounded-xl shadow-[0_12px_40px_rgba(227,24,55,0.08)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                        {paymentOptions.map((option) => (
-                                            <div 
-                                                key={option.value}
-                                                className={`px-4 py-3 cursor-pointer text-sm font-medium transition-colors ${
-                                                    newPayment.payment_method === option.value 
-                                                    ? 'bg-[rgba(227,24,55,0.06)] text-[#E31837]' 
-                                                    : 'text-[#4A4A68] hover:bg-[#FFF5F5] hover:text-[#E31837]'
-                                                }`}
-                                                onClick={() => {
-                                                    setNewPayment({...newPayment, payment_method: option.value});
-                                                    setIsDropdownOpen(false);
-                                                }}
-                                            >
-                                                {option.label}
-                                            </div>
-                                        ))}
+                                {newPayment.payment_method !== 'cash' && (
+                                    <div className="form-group">
+                                        <label className="form-label">Reference ID / UTR Number <span className="required">*</span></label>
+                                        <input 
+                                            type="text" 
+                                            className="form-input" 
+                                            placeholder="Enter reference number"
+                                            required
+                                            value={newPayment.reference_id}
+                                            onChange={(e) => setNewPayment({...newPayment, reference_id: e.target.value})}
+                                        />
                                     </div>
                                 )}
-                            </div>
-                            
-                            {newPayment.payment_method !== 'cash' && (
+
                                 <div className="form-group">
-                                    <label className="form-label">Reference ID / UTR Number <span className="required">*</span></label>
+                                    <label className="form-label">Notes (Optional)</label>
                                     <input 
                                         type="text" 
                                         className="form-input" 
-                                        placeholder="Enter reference number"
-                                        required
-                                        value={newPayment.reference_id}
-                                        onChange={(e) => setNewPayment({...newPayment, reference_id: e.target.value})}
+                                        placeholder="Any message for admin"
+                                        value={newPayment.notes}
+                                        onChange={(e) => setNewPayment({...newPayment, notes: e.target.value})}
                                     />
                                 </div>
-                            )}
 
-                            <div className="form-group">
-                                <label className="form-label">Notes (Optional)</label>
-                                <input 
-                                    type="text" 
-                                    className="form-input" 
-                                    placeholder="Any message for admin"
-                                    value={newPayment.notes}
-                                    onChange={(e) => setNewPayment({...newPayment, notes: e.target.value})}
-                                />
-                            </div>
-
-                            <button type="submit" className="btn-submit" disabled={isAdding || !newPayment.amount}>
-                                {isAdding ? <Loader2 size={18} className="animate-spin" /> : null}
-                                Submit Payment
-                            </button>
-                        </form>
-                    </div>
+                                <button type="submit" className="btn-submit" disabled={isAdding || !newPayment.amount}>
+                                    {isAdding ? <Loader2 size={18} className="animate-spin" /> : null}
+                                    Submit Payment
+                                </button>
+                            </form>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Panel - Payment History */}

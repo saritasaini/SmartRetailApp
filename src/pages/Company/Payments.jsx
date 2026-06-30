@@ -7,6 +7,7 @@ import { Search, IndianRupee, CheckCircle, XCircle, Clock, Plus, Loader2, Chevro
 import { motion } from 'framer-motion';
 
 export default function PaymentManagement() {
+  const profile = useAuthStore(state => state.profile);
   const [payments, setPayments] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -201,12 +202,12 @@ export default function PaymentManagement() {
     else if (methodFilter === 'cod') matchesMethod = (p.order_id !== null && p.payment_method === 'cash');
     else if (methodFilter === 'upi') matchesMethod = (p.payment_method === 'upi');
 
-    let matchesUpiStatus = true;
-    if (methodFilter === 'upi' && upiStatusFilter !== 'all') {
-       matchesUpiStatus = (p.status === upiStatusFilter);
+    let matchesStatus = true;
+    if (methodFilter !== 'cod' && upiStatusFilter !== 'all') {
+       matchesStatus = (p.status === upiStatusFilter);
     }
     
-    return matchesSearch && matchesMethod && matchesUpiStatus;
+    return matchesSearch && matchesMethod && matchesStatus;
   });
 
   // Reset pagination when filters change
@@ -241,12 +242,14 @@ export default function PaymentManagement() {
           <h1 className="text-3xl font-bold text-text-primary mb-2">Payment Verification</h1>
           <p className="text-text-secondary">Verify customer payments and log manual receipts.</p>
         </div>
-        <button 
-          onClick={() => { setIsAddModalOpen(true); setFieldErrors({}); }}
-          className="bg-gradient-to-br from-red-600 to-red-800 text-white border-none py-3 px-6 rounded-xl text-[14px] font-[600] cursor-pointer flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(220,38,38,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(220,38,38,0.4)] w-full md:w-auto"
-        >
-          <Plus size={16} strokeWidth={2.5} /> Add Payment
-        </button>
+        {profile?.allow_pay_later !== false && (
+          <button 
+            onClick={() => { setIsAddModalOpen(true); setFieldErrors({}); }}
+            className="bg-gradient-to-br from-red-600 to-red-800 text-white border-none py-3 px-6 rounded-xl text-[14px] font-[600] cursor-pointer flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(220,38,38,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(220,38,38,0.4)] w-full md:w-auto"
+          >
+            <Plus size={16} strokeWidth={2.5} /> Add Payment
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 mb-4 justify-between lg:items-center">
@@ -254,7 +257,7 @@ export default function PaymentManagement() {
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0 items-center shrink-0">
           {[
             { id: 'all', label: 'All' },
-            { id: 'pay_later', label: 'Pay Later' },
+            ...(profile?.allow_pay_later !== false ? [{ id: 'pay_later', label: 'Pay Later' }] : []),
             { id: 'cod', label: 'Cash on Delivery' },
             { id: 'upi', label: 'UPI Pay' }
           ].map(tab => (
@@ -274,7 +277,7 @@ export default function PaymentManagement() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 items-center w-full lg:w-auto ml-auto">
-          {methodFilter === 'upi' && (
+          {methodFilter !== 'cod' && (
             <div className="flex bg-bg-secondary border border-border-light p-1 rounded-lg w-full sm:w-auto overflow-x-auto scrollbar-hide shrink-0 shadow-sm">
               {['all', 'pending', 'verified', 'rejected'].map(status => (
                 <button

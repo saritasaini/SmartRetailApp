@@ -5,9 +5,10 @@ import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
 import { 
   ArrowLeft, Store, Users, Phone, MapPin, 
-  ShoppingCart, TrendingUp, Package, XCircle, Mail, MessageCircle, Search 
+  ShoppingCart, TrendingUp, Package, XCircle, Mail, MessageCircle, Search, Key, Eye, EyeOff
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -22,16 +23,13 @@ export default function CustomerDetail() {
   const [dateFilter, setDateFilter] = useState('all');
   const [ledgerSearch, setLedgerSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalSpent: 0,
     outstanding: 0,
     pendingOrders: 0
   });
-
-  useEffect(() => {
-    fetchCustomerDetails();
-  }, [fetchCustomerDetails]);
 
   const fetchCustomerDetails = useCallback(async () => {
     setLoading(true);
@@ -134,6 +132,10 @@ export default function CustomerDetail() {
     }
   }, [id]);
 
+  useEffect(() => {
+    fetchCustomerDetails();
+  }, [fetchCustomerDetails]);
+
   const statCards = [
     { title: "Outstanding Balance", value: `₹${stats.outstanding.toLocaleString()}`, icon: TrendingUp, color: "text-brand-berry", bg: "bg-brand-berry/10" },
     { title: "Total Billed", value: `₹${stats.totalSpent.toLocaleString()}`, icon: ShoppingCart, color: "text-brand-caramel", bg: "bg-brand-caramel/10" },
@@ -181,7 +183,7 @@ export default function CustomerDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
       {/* Combined Header & Profile Details */}
       <GlassCard className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between p-6">
         <div className="flex items-start gap-5">
@@ -228,7 +230,7 @@ export default function CustomerDetail() {
                {customer.phone && (
                  <span className="flex items-center gap-2 bg-bg-secondary px-3 py-1.5 rounded-lg border border-border-light shadow-sm">
                    <MessageCircle size={16} className="text-green-500"/> 
-                   <a href={`https://wa.me/91${customer.phone.replace(/\\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="hover:text-green-500 hover:underline transition-colors">
+                   <a href={`https://wa.me/91${String(customer.phone).replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="hover:text-green-500 hover:underline transition-colors">
                      WhatsApp
                    </a>
                  </span>
