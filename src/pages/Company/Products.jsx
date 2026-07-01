@@ -9,6 +9,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { Package, Plus, Edit2, Trash2, X, Check, Search, Image as ImageIcon, Upload, Filter, AlertCircle, ShoppingBag, FolderTree, ChevronDown, ChevronLeft, ChevronRight, ToggleRight, Ban, AlertTriangle, Pen, Trash, SlidersHorizontal, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { logCompanyAction } from '../../lib/logger';
+import { sendFanOutNotificationToCustomers } from '../../utils/notificationUtils';
 
 export default function ProductManagement() {
   const [products, setProducts] = useState([]);
@@ -261,13 +262,31 @@ export default function ProductManagement() {
         });
       } else {
         payload.company_id = useAuthStore.getState().user.id;
-        await supabase.from('products').insert([payload]);
+        // Keep the insert simple and get the new ID for reference if needed
+        const { data: newProduct, error: insertError } = await supabase.from('products').insert([payload]).select().single();
+        if (insertError) throw insertError;
+        
         await logCompanyAction({
           companyId: payload.company_id,
           action: 'Product Added',
           details: `Added new product "${payload.name}".`,
           userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
           type: 'success'
+        });
+      }
+
+      // Check if there is an active offer and it changed (or is new)
+      const hasOffer = payload.scheme_type !== 'none';
+      const offerChanged = !editingProduct || editingProduct.scheme_type !== payload.scheme_type || editingProduct.scheme_value !== payload.scheme_value || editingProduct.scheme_buy_qty !== payload.scheme_buy_qty || editingProduct.scheme_get_qty !== payload.scheme_get_qty;
+      
+      if (hasOffer && offerChanged) {
+        await sendFanOutNotificationToCustomers({
+          company_id: useAuthStore.getState().user.id,
+          type: 'offer',
+          title: 'New Offer Available!',
+          message: `Check out the new offer on ${payload.name}.`,
+          reference_id: editingProduct ? editingProduct.id : null, // or newProduct.id if we need to
+          reference_type: 'product'
         });
       }
 

@@ -1339,6 +1339,22 @@ export default function Companies() {
                                     </div>
                                 </div>
                                 
+
+                                <div className="mt-4">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Address</label>
+                                    <div className="relative">
+                                        <div className="absolute top-3 left-0 pl-4 flex items-start pointer-events-none text-gray-400">
+                                            <i className="fas fa-map-marker-alt"></i>
+                                        </div>
+                                        <textarea 
+                                            value={newCompany.address}
+                                            onChange={e => setNewCompany({...newCompany, address: e.target.value})}
+                                            className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all font-medium text-gray-800 resize-none h-24"
+                                            placeholder="Enter full address"
+                                        ></textarea>
+                                    </div>
+                                </div>
+                                
                                 <div className="mt-4">
                                     <label className="flex items-center gap-3 cursor-pointer">
                                         <div className="relative">

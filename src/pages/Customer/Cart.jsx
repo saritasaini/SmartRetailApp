@@ -8,6 +8,7 @@ import { calculateOfferDetails } from '../../utils/offerUtils';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'react-hot-toast';
+import { sendNotification } from '../../utils/notificationUtils';
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart, emptyCartDB, getTotal } = useCartStore();
@@ -72,6 +73,17 @@ export default function CartPage() {
       if (rpcError) {
         throw new Error(rpcError.message || 'Failed to place order. Please try again.');
       }
+
+      // Send notification to company
+      await sendNotification({
+        recipient_type: 'company',
+        recipient_id: profile?.company_id,
+        type: 'new_order',
+        title: 'New Order Received',
+        message: `${profile?.shop_name || 'A customer'} placed a new order #${orderId.split('-')[0].toUpperCase()}.`,
+        reference_id: orderId,
+        reference_type: 'order'
+      });
 
       // Success
       setOrderPlaced(true);

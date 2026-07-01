@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLedgerStore } from '../../store/useLedgerStore';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { sendNotification } from '../../utils/notificationUtils';
 import './Payments.css';
 
 export default function CustomerPayments() {
@@ -74,6 +75,17 @@ export default function CustomerPayments() {
         });
 
       if (error) throw error;
+
+      // Send notification to company
+      await sendNotification({
+        recipient_type: 'company',
+        recipient_id: profile?.company_id,
+        type: 'payment_received',
+        title: 'New Payment Logged',
+        message: `${profile?.shop_name || 'A customer'} logged a payment of ₹${Number(newPayment.amount).toLocaleString('en-IN')}.`,
+        reference_id: null, // Don't have the payment ID right away if not returned
+        reference_type: 'payment'
+      });
 
       setNewPayment({ amount: '', payment_method: 'upi', reference_id: '', notes: '' });
       alert('Payment submitted successfully! It is pending verification.');

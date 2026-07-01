@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { supabase } from '../lib/supabase';
+import { useNotificationStore } from '../store/useNotificationStore';
 
 export default function SuperAdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -9,24 +10,38 @@ export default function SuperAdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showEmails, setShowEmails] = useState(false);
-  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [messages, setMessages] = useState([]);
   
-  const notificationCount = notifications.filter(n => !n.is_read).length;
   const emailCount = messages.filter(m => !m.is_read).length;
-  
-  const notificationRef = useRef(null);
   const emailRef = useRef(null);
+  const notificationRef = useRef(null);
+
+  const {
+    notifications,
+    unreadCount: notificationCount,
+    fetchNotifications,
+    setupSubscription,
+    cleanupSubscription,
+    markAsRead
+  } = useNotificationStore();
+
+  const markAllNotificationsRead = async () => {
+    // We can iterate over unread notifications and mark them as read
+    const unread = notifications.filter(n => !n.is_read);
+    for (const n of unread) {
+        if (markAsRead) await markAsRead(n.id);
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-        setShowNotifications(false);
-      }
       if (emailRef.current && !emailRef.current.contains(event.target)) {
         setShowEmails(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -34,27 +49,18 @@ export default function SuperAdminLayout() {
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
     fetchMessages();
+    fetchNotifications(null, 'super_admin');
+    setupSubscription(null, 'super_admin');
 
-    // Realtime subscriptions removed for non-existent tables
     return () => {
-      // Cleanup if any future subscriptions are added
+      cleanupSubscription();
     };
   }, []);
-
-  const fetchNotifications = async () => {
-    // Stubbed until backend supports notifications
-    setNotifications([]);
-  };
 
   const fetchMessages = async () => {
     // Stubbed until backend supports messages
     setMessages([]);
-  };
-
-  const markAllNotificationsRead = async () => {
-    setNotifications([]);
   };
 
   const markAllMessagesRead = async () => {
@@ -82,9 +88,9 @@ export default function SuperAdminLayout() {
         ]);
 
         setCounts({
-          companies: companiesRes.count !== null ? companiesRes.count.toString() : '3',
-          customers: customersRes.count !== null ? customersRes.count.toString() : '3',
-          orders: ordersRes.count !== null ? ordersRes.count.toString() : '20'
+          companies: (companiesRes?.count ?? 3).toString(),
+          customers: (customersRes?.count ?? 3).toString(),
+          orders: (ordersRes?.count ?? 20).toString()
         });
       } catch (err) {
         console.error('Error fetching badge counts:', err);
@@ -98,11 +104,12 @@ export default function SuperAdminLayout() {
     { name: 'Dashboard', icon: 'fas fa-th-large', path: '/admin', desc: 'Monitor your B2B wholesale platform globally.' },
     { name: 'Companies', icon: 'fas fa-building', path: '/admin/companies', badge: counts.companies, desc: 'Manage your retail network and company partners.' },
     { name: 'Customers', icon: 'fas fa-users', path: '/admin/customers', badge: counts.customers, desc: 'View and manage all registered customers.' },
-    { name: 'Orders', icon: 'fas fa-shopping-cart', path: '/admin/orders', badge: counts.orders, desc: 'Track and manage all platform orders.' },
-    { name: 'Invoices', icon: 'fas fa-file-invoice', path: '/admin/invoices', desc: 'Manage billing and generated invoices.' },
-    { name: 'Analytics', icon: 'fas fa-chart-pie', path: '/admin/analytics', desc: 'Platform growth and performance metrics.' },
-    { name: 'Audit Trail', icon: 'fas fa-shield-alt', path: '/admin/audit-logs', desc: 'Monitor platform activities and security logs.' },
-    { name: 'Settings', icon: 'fas fa-cog', path: '/admin/settings', desc: 'Configure platform settings and preferences.' }
+    { name: 'Orders', icon: 'fas fa-shopping-cart', path: '/admin/orders', badge: counts.orders, desc: 'Track and manage all wholesale orders.' },
+    { name: 'Invoices', icon: 'fas fa-file-invoice-dollar', path: '/admin/invoices', desc: 'Manage billing, payments, and financial records.' },
+    { name: 'Analytics', icon: 'fas fa-chart-line', path: '/admin/analytics', desc: 'Detailed business insights and performance metrics.' },
+    { name: 'Notifications', icon: 'fas fa-bell', path: '/admin/notifications', badge: (notificationCount || 0).toString(), desc: 'System alerts and important notifications.' },
+    { name: 'Audit Trail', icon: 'fas fa-history', path: '/admin/audit', desc: 'Track system changes and admin activities.' },
+    { name: 'Settings', icon: 'fas fa-cog', path: '/admin/settings', desc: 'Platform configuration and global settings.' },
   ];
 
   const currentNavItem = navItems.find(item => 

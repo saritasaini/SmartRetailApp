@@ -4,15 +4,22 @@ import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Search, Filter, ChevronDown, Image as ImageIcon, ShoppingCart, Plus, Minus, Loader2, Star, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 
 export default function ProductCatalog() {
   const { companyName } = useOutletContext();
+  const [searchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== null) setSearchTerm(q);
+  }, [searchParams]);
+
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [addingToCart, setAddingToCart] = useState(null);

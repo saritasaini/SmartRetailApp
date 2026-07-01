@@ -2,9 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Search, ChevronDown, Check, Clock, Truck, Package, ClipboardCheck, ChevronRight, User, CreditCard, Banknote, ChevronLeft } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import InvoiceModal from '../../components/ui/InvoiceModal';
 import OrderEditModal from '../../components/ui/OrderEditModal';
 import { logCompanyAction } from '../../lib/logger';
+import { sendNotification } from '../../utils/notificationUtils';
 
 function OrderStatusPath({ order, onUpdateStatus }) {
   const stages = [
@@ -151,9 +153,16 @@ function CustomDropdown({ value, onChange, options, className }) {
 }
 
 export default function OrderManagement() {
+  const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== null) setSearchTerm(q);
+  }, [searchParams]);
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [amountFilter, setAmountFilter] = useState('all');
@@ -246,6 +255,20 @@ export default function OrderManagement() {
         userName: useAuthStore.getState().user.user_metadata?.owner_name || 'Staff',
         type: newStatus === 'delivered' ? 'success' : newStatus === 'cancelled' ? 'error' : 'info'
       });
+
+      // Send notification to customer
+      const order = originalOrders.find(o => o.id === orderId);
+      if (order) {
+        await sendNotification({
+          recipient_type: 'customer',
+          recipient_id: order.customer_id,
+          type: 'order_update',
+          title: 'Order Status Updated',
+          message: `Your order #${orderId.slice(0, 8).toUpperCase()} status is now ${newStatus.replace('_', ' ')}.`,
+          reference_id: orderId,
+          reference_type: 'order'
+        });
+      }
       
     } catch (error) {
       console.error('Error updating order status:', error);

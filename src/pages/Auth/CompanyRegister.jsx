@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { Mail, Lock, Store, User, Phone, Loader2, AlertCircle, MapPin, Briefcase, Eye, EyeOff, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
+import { sendNotification } from '../../utils/notificationUtils';
 
 export default function CompanyRegister() {
   const [formData, setFormData] = useState({
@@ -81,6 +82,19 @@ export default function CompanyRegister() {
           // Don't fail the whole registration, just show a warning
           setError("Account created, but logo upload failed. You can update it later in Settings.");
         }
+      }
+
+      // Notify super admin about new company
+      if (authData?.user?.id) {
+        await sendNotification({
+          recipient_type: 'super_admin',
+          recipient_id: null,
+          type: 'new_company',
+          title: 'New Company Registered',
+          message: `${formData.shop_name} has just registered as a new company on the platform.`,
+          reference_id: authData.user.id,
+          reference_type: 'company'
+        });
       }
 
       setSuccess(true);

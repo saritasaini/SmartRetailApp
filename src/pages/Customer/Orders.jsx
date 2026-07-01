@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useOrderStore } from '../../store/useOrderStore';
-import { ShoppingBag, Package, Loader2, FileText, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ShoppingBag, Package, Loader2, FileText, AlertTriangle, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import InvoiceModal from '../../components/ui/InvoiceModal';
 import ReorderModal from '../../components/ui/ReorderModal';
 import OrderEditModal from '../../components/ui/OrderEditModal';
 import Button from '../../components/ui/Button';
+import { sendNotification } from '../../utils/notificationUtils';
 import './Orders.css';
 
 const OrderCard = ({ order, index, setCancellingOrderId, setSelectedInvoice, setReorderOrder, setEditingOrder }) => {
@@ -141,6 +142,8 @@ export default function MyOrders() {
   const [editingOrder, setEditingOrder] = useState(null);
   const [reorderOrder, setReorderOrder] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchTerm = searchParams.get('search') || '';
   const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
@@ -171,6 +174,20 @@ export default function MyOrders() {
       if (!data || data.length === 0) {
         throw new Error("Aapke paas order cancel karne ki permission nahi hai. Kripya admin se 'Customer UPDATE Policy' on karne ko kahein.");
       }
+
+      // Notify company about cancellation
+      const orderToCancel = originalOrders.find(o => o.id === orderId);
+      if (orderToCancel && orderToCancel.company_id) {
+        await sendNotification({
+          recipient_type: 'company',
+          recipient_id: orderToCancel.company_id,
+          type: 'order_update',
+          title: 'Order Cancelled',
+          message: `${profile?.full_name || 'A customer'} cancelled Order #${orderId.split('-')[0].toUpperCase()}.`,
+          reference_id: orderId,
+          reference_type: 'order'
+        });
+      }
     } catch (err) {
       console.error('Error cancelling order:', err);
       alert('Failed to cancel order: ' + (err.message || 'Unknown error'));
@@ -181,9 +198,21 @@ export default function MyOrders() {
   };
 
   const filteredOrders = orders.filter(order => {
-    if (statusFilter === 'all') return true;
-    if (statusFilter === 'delivery') return order.status === 'out_for_delivery';
-    return order.status === statusFilter;
+    // 1. Status Filter
+    let statusMatch = true;
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'delivery') statusMatch = order.status === 'out_for_delivery';
+      else statusMatch = order.status === statusFilter;
+    }
+
+    // 2. Search Filter
+    let searchMatch = true;
+    if (searchTerm) {
+      const orderIdPart = order.id.split('-')[0].toLowerCase();
+      searchMatch = orderIdPart.includes(searchTerm.toLowerCase());
+    }
+
+    return statusMatch && searchMatch;
   });
 
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
@@ -213,6 +242,22 @@ export default function MyOrders() {
         <div className="page-header">
           <h1>My Orders</h1>
           <p>Track and view your past orders with real-time updates.</p>
+        </div>
+
+        <div className="mb-6 relative max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input 
+              type="text" 
+              placeholder="Search by Order ID (e.g. 126B8DEA)..." 
+              value={searchTerm}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val) setSearchParams({ search: val });
+                else setSearchParams({});
+                setCurrentPage(1);
+              }}
+              className="w-full py-3 pr-4 pl-11 border border-gray-200 rounded-xl text-[15px] text-gray-900 bg-white focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 shadow-sm transition-all"
+          />
         </div>
 
         <div className="filter-bar">

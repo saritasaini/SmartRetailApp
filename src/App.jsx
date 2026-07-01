@@ -36,6 +36,7 @@ import CustomerDetail from './pages/Company/CustomerDetail';
 import PaymentManagement from './pages/Company/Payments';
 import CompanyLogs from './pages/Company/Logs';
 import CompanySettings from './pages/Company/Settings';
+import CompanyNotifications from './pages/Company/Notifications';
 
 // Customer Pages
 import CustomerDashboard from './pages/Customer/Dashboard';
@@ -117,6 +118,7 @@ function App() {
           <Route path="orders/:id" element={<SuperAdminOrderDetail />} />
           <Route path="invoices" element={<SuperAdminInvoices />} />
           <Route path="analytics" element={<SuperAdminAnalytics />} />
+          <Route path="notifications" element={<CompanyNotifications recipientType="super_admin" />} />
           <Route path="audit" element={<SuperAdminAuditTrail />} />
           <Route path="settings" element={<SuperAdminSettings />} />
         </Route>
@@ -129,6 +131,7 @@ function App() {
           <Route path="customers" element={<CustomerManagement />} />
           <Route path="customers/:id" element={<ErrorBoundary><CustomerDetail /></ErrorBoundary>} />
           <Route path="payments" element={<PaymentManagement />} />
+          <Route path="notifications" element={<CompanyNotifications />} />
           <Route path="logs" element={<CompanyLogs />} />
           <Route path="settings" element={<CompanySettings />} />
         </Route>

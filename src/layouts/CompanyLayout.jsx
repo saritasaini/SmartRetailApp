@@ -9,8 +9,11 @@ import {
   CreditCard,
   FileText,
   Settings,
-  LogOut
+  LogOut,
+  Bell
 } from 'lucide-react';
+import { useNotificationStore } from '../store/useNotificationStore';
+import NotificationBell from '../components/ui/NotificationBell';
 
 export default function CompanyLayout() {
   const location = useLocation();
@@ -31,9 +34,20 @@ export default function CompanyLayout() {
     { name: 'Orders', path: '/company/orders', icon: ShoppingCart },
     { name: 'Customers', path: '/company/customers', icon: Users },
     { name: 'Payments', path: '/company/payments', icon: CreditCard },
+    { name: 'Notifications', path: '/company/notifications', icon: Bell },
     { name: 'Logs', path: '/company/logs', icon: FileText },
     { name: 'Settings', path: '/company/settings', icon: Settings },
   ];
+
+  const { unreadCount, fetchNotifications, setupSubscription, cleanupSubscription } = useNotificationStore();
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchNotifications(profile.id, 'company');
+      setupSubscription(profile.id, 'company');
+      return () => cleanupSubscription();
+    }
+  }, [profile?.id]);
 
   const handleLogout = async () => {
     await signOut();
@@ -43,8 +57,8 @@ export default function CompanyLayout() {
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-gray-50 text-gray-800" style={{ fontFamily: 'Inter, sans-serif' }}>
       
-      {/* Desktop Sidebar (hidden on mobile) */}
-      <aside className="w-64 bg-white shadow-xl z-20 hidden lg:flex flex-col slide-in-left fixed inset-y-0 left-0" style={{ animationDelay: '0.1s' }}>
+      {/* Desktop Sidebar (hidden on mobile/tablet) */}
+      <aside className="w-64 bg-white shadow-xl z-20 hidden min-[1281px]:flex flex-col slide-in-left fixed inset-y-0 left-0" style={{ animationDelay: '0.1s' }}>
         <div className="p-6 border-b border-gray-100 flex items-center gap-3">
           {profile?.logo_url && (
             <img src={profile.logo_url} alt="Logo" className="w-12 h-12 rounded-xl object-cover shadow-sm border border-gray-100 shrink-0 bg-white" />
@@ -76,6 +90,11 @@ export default function CompanyLayout() {
                   <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
                 {item.name}
+                {item.name === 'Notifications' && unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -95,9 +114,9 @@ export default function CompanyLayout() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden lg:pl-64 pb-16 lg:pb-0">
+      <main className="flex-1 flex flex-col h-full overflow-hidden min-[1281px]:pl-64 pb-24 min-[1281px]:pb-0">
         {/* Mobile Header */}
-        <header className="lg:hidden bg-white/80 backdrop-blur-xl border-b border-gray-100 p-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+        <header className="min-[1281px]:hidden bg-white/80 backdrop-blur-xl border-b border-gray-100 p-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
           <div className="flex items-center gap-3">
             {profile?.logo_url && (
               <img src={profile.logo_url} alt="Logo" className="w-10 h-10 rounded-xl object-cover shadow-sm border border-gray-100 shrink-0 bg-white" />
@@ -109,12 +128,19 @@ export default function CompanyLayout() {
               <p className="text-[11px] font-medium text-gray-400">Company Panel</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="p-2 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-          >
-            <LogOut size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell 
+              recipientType="company" 
+              buttonClassName="relative p-2 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              iconSize={20}
+            />
+            <button
+              onClick={handleLogout}
+              className="p-2 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
         </header>
 
         {/* Page Content */}
@@ -124,29 +150,31 @@ export default function CompanyLayout() {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 py-2 flex overflow-x-auto overflow-y-hidden scrollbar-hide snap-x z-40 safe-area-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.name}
-              to={item.path}
-              className={`flex-shrink-0 w-[20%] flex flex-col items-center justify-center gap-1.5 snap-start p-2 rounded-xl transition-colors ${
-                isActive ? 'text-red-600' : 'text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              <div className="relative">
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                {isActive && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-600 border border-white"></span>
-                )}
-              </div>
-              <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-medium'}`}>{item.name}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      <div className="min-[1281px]:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-40 safe-area-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
+        <nav className="flex justify-around items-center px-2 py-2 max-w-md mx-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.name}
+                to={item.path}
+                className={`relative flex flex-col items-center justify-center gap-1 p-2 w-[20%] transition-colors ${
+                  isActive ? 'text-red-600' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl'
+                }`}
+              >
+                <div className="relative flex items-center justify-center">
+                  <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                  {isActive && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-600 border border-white"></span>
+                  )}
+                </div>
+                <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-medium'}`}>{item.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 }

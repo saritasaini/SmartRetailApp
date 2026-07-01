@@ -12,6 +12,7 @@ import {
   LogOut,
   Wallet
 } from 'lucide-react';
+import NotificationBell from '../components/ui/NotificationBell';
 
 export default function CustomerLayout() {
   const location = useLocation();
@@ -79,7 +80,7 @@ export default function CustomerLayout() {
       )}
 
       {/* Desktop Header */}
-      <header className={`hidden lg:flex items-center px-8 py-3 bg-white/85 backdrop-blur-md border-b border-gray-100 sticky z-30 mt-0 ${originalAdminProfile ? 'top-10' : 'top-0'}`}>
+      <header className={`hidden min-[1281px]:flex items-center px-8 py-3 bg-white/85 backdrop-blur-md border-b border-gray-100 sticky z-50 mt-0 ${originalAdminProfile ? 'top-10' : 'top-0'}`}>
         {/* Left: Logo */}
         <div className="flex-1 flex items-center gap-3">
           <div className="bg-[#b91c1c] w-10 h-10 rounded-xl flex items-center justify-center shadow-sm">
@@ -112,6 +113,8 @@ export default function CustomerLayout() {
 
         {/* Right: Actions */}
         <div className="flex-1 flex items-center justify-end gap-3">
+          <NotificationBell recipientType="customer" />
+          
           <Link
             to="/customer/profile"
             className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors shadow-sm ${location.pathname === '/customer/profile'
@@ -150,12 +153,17 @@ export default function CustomerLayout() {
       </header>
 
       {/* Mobile Header */}
-      <header className={`lg:hidden flex items-center justify-between px-4 py-4 glass-card rounded-none border-x-0 border-t-0 sticky z-30 ${originalAdminProfile ? 'top-[36px]' : 'top-0'}`}>
+      <header className={`min-[1281px]:hidden flex items-center justify-between px-4 py-4 glass-card rounded-none border-x-0 border-t-0 sticky z-50 ${originalAdminProfile ? 'top-[36px]' : 'top-0'}`}>
         <div className="flex items-center gap-2">
           <IceCream className="text-brand-caramel" size={24} />
           <h1 className="text-lg font-bold text-gradient">{companyName}</h1>
         </div>
         <div className="flex items-center gap-3">
+          <NotificationBell 
+            recipientType="customer" 
+            buttonClassName="relative text-text-secondary hover:text-brand-caramel transition-colors" 
+            iconSize={22} 
+          />
           <Link to="/customer/profile" className="text-text-secondary hover:text-brand-caramel transition-colors">
             <User size={22} />
           </Link>
@@ -166,35 +174,41 @@ export default function CustomerLayout() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 pb-24 min-[1281px]:p-8 min-[1281px]:pb-8">
         <Outlet context={{ companyName }} />
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 glass-card rounded-none border-x-0 border-b-0 px-2 py-2 flex justify-between items-center z-40 safe-area-bottom">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.name}
-              to={item.path}
-              className={`relative flex flex-col items-center gap-1 ${isActive ? 'text-red-600' : 'text-gray-500'
+      <div className="min-[1281px]:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-40 safe-area-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
+        <nav className="flex justify-around items-center px-2 py-2 max-w-md mx-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.name}
+                to={item.path}
+                className={`relative flex flex-col items-center justify-center gap-1 p-2 w-[20%] transition-colors ${
+                  isActive ? 'text-red-600' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl'
                 }`}
-            >
-              <div className={`p-1.5 rounded-[10px] transition-all duration-200 ${isActive ? 'bg-gradient-to-br from-red-600 to-red-800 text-white shadow-[0_4px_12px_rgba(220,38,38,0.3)]' : ''}`}>
-                <Icon size={22} className={isActive ? 'text-white' : ''} />
-              </div>
-              <span className="text-[10px] font-medium leading-none">{item.name}</span>
-              {item.badge > 0 && (
-                <span className="absolute -top-1 -right-1 bg-brand-berry text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full shadow-sm">
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
+              >
+                <div className="relative flex items-center justify-center">
+                  <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                  {isActive && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-600 border border-white"></span>
+                  )}
+                  {item.badge > 0 && !isActive && (
+                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
+                <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-medium'}`}>{item.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
+import { sendNotification } from '../../utils/notificationUtils';
 import GlassCard from '../../components/ui/GlassCard';
 import Button from '../../components/ui/Button';
 import { Search, IndianRupee, CheckCircle, XCircle, Clock, Plus, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -127,6 +128,21 @@ export default function PaymentManagement() {
         .eq('id', paymentAction.id);
 
       if (error) throw error;
+
+      // Find the payment details to send a proper notification
+      const payment = payments.find(p => p.id === paymentAction.id);
+      if (payment && paymentAction.status === 'verified') {
+        await sendNotification({
+          recipient_type: 'customer',
+          recipient_id: payment.customer_id,
+          type: 'payment_verified',
+          title: 'Payment Verified',
+          message: `Your payment of ₹${Number(payment.amount).toLocaleString('en-IN')} has been verified by ${profile?.shop_name || 'the company'}.`,
+          reference_id: payment.id,
+          reference_type: 'payment'
+        });
+      }
+
       fetchPaymentsAndCustomers();
     } catch (err) {
       console.error('Error updating status:', err);

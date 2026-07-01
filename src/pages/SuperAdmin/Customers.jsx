@@ -190,7 +190,6 @@ export default function Customers() {
         .from('profiles')
         .update({
           owner_name: editingCustomer.owner_name,
-          email: editingCustomer.email,
           phone: editingCustomer.phone,
           address: editingCustomer.address
         })
@@ -828,10 +827,10 @@ export default function Customers() {
                             <label className="block text-sm font-semibold text-gray-700 mb-1">Email Address</label>
                             <input 
                                 type="email" 
-                                required
                                 value={editingCustomer.email}
-                                onChange={e => setEditingCustomer({...editingCustomer, email: e.target.value})}
-                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-red-500 transition-colors"
+                                disabled
+                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed transition-colors"
+                                title="Email cannot be changed as it is used for login"
                             />
                         </div>
 

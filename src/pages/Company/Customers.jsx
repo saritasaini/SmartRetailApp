@@ -195,8 +195,7 @@ export default function CustomerManagement() {
           shop_name: editCustomer.shop_name,
           owner_name: editCustomer.owner_name,
           phone: editCustomer.phone,
-          address: editCustomer.address,
-          email: editCustomer.email
+          address: editCustomer.address
         })
         .eq('id', editCustomer.id);
 
@@ -798,8 +797,9 @@ export default function CustomerManagement() {
                   <input
                     type="email"
                     value={editCustomer.email || ''}
-                    onChange={(e) => setEditCustomer({...editCustomer, email: e.target.value})}
-                    className="w-full bg-bg-primary border border-border-light rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-brand-caramel"
+                    disabled
+                    className="w-full bg-bg-tertiary border border-border-light rounded-lg px-4 py-2 text-text-muted cursor-not-allowed"
+                    title="Email cannot be changed as it is used for login"
                   />
                 </div>
                 <div>
